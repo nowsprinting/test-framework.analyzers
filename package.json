@@ -1,0 +1,29 @@
+{
+  "name": "com.nowsprinting.test-framework.analyzers",
+  "description": "Roslyn analyzers for writing unit tests with Unity Test Framework",
+  "version": "0.1.0",
+  "author": "Koji Hasegawa <hasegawa@hubsys.co.jp> (https://github.com/nowsprinting)",
+  "category": "Unity Test Framework",
+  "changelogUrl": "https://github.com/nowsprinting/test-framework.analyzers/releases",
+  "dependencies": {},
+  "displayName": "UTF.Analyzers",
+  "documentationUrl": "https://nowsprinting.github.io/test-framework.analyzers/",
+  "files": [
+    "LICENSE.md*",
+    "package.json*",
+    "README.md*"
+  ],
+  "keywords": [
+    "Unity",
+    "TestFramework",
+    "testing",
+    "tests",
+    "Roslyn analyzers",
+    "static analysis"
+  ],
+  "license": "MIT",
+  "licensesUrl": "https://github.com/nowsprinting/test-framework.analyzers/blob/master/LICENSE.md",
+  "repository": "https://github.com/nowsprinting/test-framework.analyzers",
+  "unity": "2022.3",
+  "unityRelease": "12f1"
+}

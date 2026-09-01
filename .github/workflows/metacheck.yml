@@ -1,0 +1,33 @@
+# Copyright (c) 2026 Koji Hasegawa.
+# This software is released under the MIT License.
+
+name: Meta file check
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [ opened, synchronize, reopened ]  # Same as default
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  meta-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          submodules: false
+          lfs: false
+
+      - uses: DeNA/unity-meta-check@a2e35e2c0b652031facd143db6f0a438b49de38a # v4
