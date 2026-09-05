@@ -3,6 +3,9 @@
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
+        <!-- The verifier compiles with the Roslyn version brought in by the ProjectReference (4.3.0), whose default is C# 10.
+             Pin the Tests project to the same level; otherwise a fixture using newer syntax builds here and fails in the verifier -->
+        <LangVersion>10.0</LangVersion>
 
         <IsPackable>false</IsPackable>
     </PropertyGroup>
@@ -16,6 +19,12 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Dummies and fixtures are compiled here to type-check them against each other, and copied to the output
+             directory so the verifier can read them as files at runtime -->
+        <Compile Update="TestData/**/*.cs" CopyToOutputDirectory="PreserveNewest"/>
     </ItemGroup>
 
     <ItemGroup>
