@@ -27,15 +27,8 @@ jobs:
       - name: Test
         run: dotnet test -c Release UTF.Analyzers~/UTF.Analyzers.sln --no-build
 
-      - name: Get package validation baseline version (latest on nuget.org)
-        run: |
-          set -euo pipefail
-          ver=$(curl -sSf https://api.nuget.org/v3-flatcontainer/utf.analyzers/index.json | jq -er '.versions | last')
-          echo "Baseline version: $ver"
-          echo "BASELINE_VERSION=$ver" >> "$GITHUB_ENV"
-
       - name: Pack
-        run: dotnet pack UTF.Analyzers~/UTF.Analyzers/UTF.Analyzers.csproj -c Release -p:PackageValidationBaselineVersion="$BASELINE_VERSION"
+        run: dotnet pack UTF.Analyzers~/UTF.Analyzers/UTF.Analyzers.csproj -c Release
 
       - name: Upload nupkg
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
