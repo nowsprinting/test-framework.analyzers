@@ -2,7 +2,6 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <IsPackable>false</IsPackable>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
 
@@ -11,6 +10,27 @@
 
         <RootNamespace>UTF.Analyzers</RootNamespace>
         <AssemblyName>UTF.Analyzers</AssemblyName>
+
+        <!-- NuGet package settings -->
+        <IsPackable>true</IsPackable>
+        <PackageId>UTF.Analyzers</PackageId>
+        <Version>0.1.0</Version>
+        <Authors>Koji Hasegawa</Authors>
+        <Copyright>(c) 2026 Koji Hasegawa</Copyright>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageProjectUrl>https://github.com/nowsprinting/test-framework.analyzers</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/nowsprinting/test-framework.analyzers.git</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>Roslyn Analyzer Unity UnityTestFramework NUnit CodeAnalysis RoslynAnalyzer</PackageTags>
+        <Description>Roslyn analyzers for writing unit tests with Unity Test Framework</Description>
+        <NoPackageAnalysis>true</NoPackageAnalysis>
+        <EnablePackageValidation>true</EnablePackageValidation>
+
+        <!-- Analyzer package: ship the dll under analyzers/ only; the default lib/ output would be loaded as a runtime reference -->
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <DevelopmentDependency>true</DevelopmentDependency>
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     </PropertyGroup>
 
     <ItemGroup>
@@ -35,6 +55,11 @@
             <AutoGen>True</AutoGen>
             <DependentUpon>Resources.resx</DependentUpon>
         </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="../../README.md" Pack="true" PackagePath="/"/>
+        <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false"/>
     </ItemGroup>
 
     <!-- Copy only the analyzer dll; OutDir would also drop pdb/deps.json/reference dlls into the Unity package -->
