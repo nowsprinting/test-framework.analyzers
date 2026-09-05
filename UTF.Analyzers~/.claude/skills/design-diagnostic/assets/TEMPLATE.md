@@ -29,4 +29,4 @@ One or two paragraphs on why this rule is needed (the underlying defect or desig
 
 ## Notes
 
-Exclusion conditions, known limitations, an `.editorconfig` example for changing the severity, etc. Write only if applicable.
+Exclusion conditions, known limitations, an `.editorconfig` or `.globalconfig` example for changing the severity, etc. Write only if applicable.
