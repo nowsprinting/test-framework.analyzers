@@ -5,7 +5,10 @@
   "author": "Koji Hasegawa <hasegawa@hubsys.co.jp> (https://github.com/nowsprinting)",
   "category": "Unity Test Framework",
   "changelogUrl": "https://github.com/nowsprinting/test-framework.analyzers/releases",
-  "dependencies": {},
+  "dependencies": {
+    "com.unity.test-framework": "1.4.6",
+    "nunit.analyzers.unity": "3.9.0"
+  },
   "displayName": "UTF.Analyzers",
   "documentationUrl": "https://nowsprinting.github.io/test-framework.analyzers/",
   "files": [

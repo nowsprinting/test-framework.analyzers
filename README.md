@@ -18,7 +18,28 @@ See details: [Diagnostics Index](Documentation~/index.md)
 
 ## Installation
 
-TBD
+If you installed [openupm-cli](https://github.com/openupm/openupm-cli), run the command below
+
+```bash
+openupm add com.nowsprinting.test-framework.analyzers
+```
+
+Or open Package Manager window (Window | Package Manager) and add package from git URL
+
+```
+https://github.com/nowsprinting/com.nowsprinting.test-framework.analyzers.git
+```
+
+> [!NOTE]\
+> You do not need to add a reference to the test assembly definition file (asmdef).
+> Because it's configured via an assembly definition reference file (asmref) to apply across all test assemblies.
+
+> [!NOTE]\
+> Installing this package will also install the following packages:
+> - Unity Test Framework v1.4.6
+> - NUnit.Analyzers v3.9.0
+>
+> If you do not wish to use these, please use the NuGet package instead.
 
 
 ## License
