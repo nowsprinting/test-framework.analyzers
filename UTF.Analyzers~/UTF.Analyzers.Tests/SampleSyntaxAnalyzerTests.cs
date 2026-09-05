@@ -4,22 +4,23 @@ using Verifier =
     Microsoft.CodeAnalysis.CSharp.Testing.XUnit.AnalyzerVerifier<
         UTF.Analyzers.SampleSyntaxAnalyzer>;
 
-namespace UTF.Analyzers.Tests;
-
-public class SampleSyntaxAnalyzerTests
+namespace UTF.Analyzers.Tests
 {
-    [Fact]
-    public async Task ClassWithMyCompanyTitle_AlertDiagnostic()
+    public class SampleSyntaxAnalyzerTests
     {
-        const string text = @"
+        [Fact]
+        public async Task ClassWithMyCompanyTitle_AlertDiagnostic()
+        {
+            const string text = @"
 public class MyCompanyClass
 {
 }
 ";
 
-        var expected = Verifier.Diagnostic()
-            .WithLocation(2, 14)
-            .WithArguments("MyCompanyClass");
-        await Verifier.VerifyAnalyzerAsync(text, expected).ConfigureAwait(false);
+            var expected = Verifier.Diagnostic()
+                .WithLocation(2, 14)
+                .WithArguments("MyCompanyClass");
+            await Verifier.VerifyAnalyzerAsync(text, expected).ConfigureAwait(false);
+        }
     }
 }

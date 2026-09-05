@@ -1,13 +1,14 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 
-namespace UTF.Analyzers.Tests.TestData.UTF1001;
-
-public class TestCaseOnGenericEnumerator
+namespace UTF.Analyzers.Tests.TestData.UTF1001
 {
-    [TestCase(1)]
-    public IEnumerator<int> MyTest(int value)
+    public class TestCaseOnGenericEnumerator
     {
-        yield return value;
+        [TestCase(1)]
+        public IEnumerator<int> MyTest(int value)
+        {
+            yield return value;
+        }
     }
 }

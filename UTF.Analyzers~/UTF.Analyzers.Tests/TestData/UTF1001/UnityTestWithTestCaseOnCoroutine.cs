@@ -2,14 +2,15 @@ using System.Collections;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
-namespace UTF.Analyzers.Tests.TestData.UTF1001;
-
-public class UnityTestWithTestCaseOnCoroutine
+namespace UTF.Analyzers.Tests.TestData.UTF1001
 {
-    [UnityTest]
-    [TestCase(1)]
-    public IEnumerator MyCoroutineTest(int value) // UTF1001
+    public class UnityTestWithTestCaseOnCoroutine
     {
-        yield return null;
+        [UnityTest]
+        [TestCase(1)]
+        public IEnumerator MyCoroutineTest(int value) // UTF1001
+        {
+            yield return null;
+        }
     }
 }

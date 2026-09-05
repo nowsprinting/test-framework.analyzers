@@ -4,14 +4,14 @@ using Verifier =
     Microsoft.CodeAnalysis.CSharp.Testing.XUnit.AnalyzerVerifier<
         UTF.Analyzers.SampleSemanticAnalyzer>;
 
-namespace UTF.Analyzers.Tests;
-
-public class SampleSemanticAnalyzerTests
+namespace UTF.Analyzers.Tests
 {
-    [Fact]
-    public async Task SetSpeedHugeSpeedSpecified_AlertDiagnostic()
+    public class SampleSemanticAnalyzerTests
     {
-        const string text = @"
+        [Fact]
+        public async Task SetSpeedHugeSpeedSpecified_AlertDiagnostic()
+        {
+            const string text = @"
 public class Program
 {
     public void Main()
@@ -27,9 +27,10 @@ public class Spaceship
 }
 ";
 
-        var expected = Verifier.Diagnostic()
-            .WithLocation(7, 28)
-            .WithArguments("300000000");
-        await Verifier.VerifyAnalyzerAsync(text, expected);
+            var expected = Verifier.Diagnostic()
+                .WithLocation(7, 28)
+                .WithArguments("300000000");
+            await Verifier.VerifyAnalyzerAsync(text, expected);
+        }
     }
 }

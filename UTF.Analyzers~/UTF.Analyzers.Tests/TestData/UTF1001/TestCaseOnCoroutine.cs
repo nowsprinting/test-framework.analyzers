@@ -1,14 +1,15 @@
 using System.Collections;
 using NUnit.Framework;
 
-namespace UTF.Analyzers.Tests.TestData.UTF1001;
-
-public class TestCaseOnCoroutine
+namespace UTF.Analyzers.Tests.TestData.UTF1001
 {
-    [TestCase(1)]
-    [TestCase(2)]
-    public IEnumerator MyCoroutineTest(int value) // UTF1001
+    public class TestCaseOnCoroutine
     {
-        yield return null;
+        [TestCase(1)]
+        [TestCase(2)]
+        public IEnumerator MyCoroutineTest(int value) // UTF1001
+        {
+            yield return null;
+        }
     }
 }
