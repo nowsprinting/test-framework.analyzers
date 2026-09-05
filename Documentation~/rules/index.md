@@ -12,6 +12,7 @@ Rules about test method signatures and attribute combinations.
 | Id | Title |
 |----|-------|
 | [UTF1001](UTF1001.md) | TestCase and TestCaseSource are not supported on coroutine test methods |
+| [UTF1002](UTF1002.md) | `Task<TResult>` is not supported as a test method return type |
 
 ### Assertion (UTF2xxx)
 
