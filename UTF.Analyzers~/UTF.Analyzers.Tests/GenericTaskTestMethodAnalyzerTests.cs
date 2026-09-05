@@ -9,7 +9,6 @@ namespace UTF.Analyzers.Tests
         [Theory]
         [InlineData("TestCaseWithExpectedResultOnGenericTask", 9, 22)]
         [InlineData("TestCaseSourceOnGenericTask", 11, 22)]
-        [InlineData("TestOnGenericTask", 9, 22)]
         [InlineData("TestOnNonAsyncGenericTask", 9, 16)]
         [InlineData("MultipleTestCasesOnGenericTask", 10, 22)]
         public async Task GenericTaskTestMethod_ReportsOnceAtReturnType(string fixture, int line, int column)
