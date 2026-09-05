@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace UTF.Analyzers;
@@ -28,5 +30,47 @@ public sealed class GenericTaskTestMethodAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
+        context.RegisterCompilationStartAction(OnCompilationStart);
+    }
+
+    private static void OnCompilationStart(CompilationStartAnalysisContext context)
+    {
+        var testAttributes = new[]
+            {
+                context.Compilation.GetTypeByMetadataName("NUnit.Framework.TestAttribute"),
+                context.Compilation.GetTypeByMetadataName("NUnit.Framework.TestCaseAttribute"),
+                context.Compilation.GetTypeByMetadataName("NUnit.Framework.TestCaseSourceAttribute"),
+            }
+            .Where(t => t is not null)
+            .ToImmutableArray();
+        var genericTask = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
+        if (testAttributes.IsEmpty || genericTask is null)
+        {
+            return;
+        }
+
+        context.RegisterSymbolAction(symbolContext =>
+        {
+            symbolContext.CancellationToken.ThrowIfCancellationRequested();
+            var method = (IMethodSymbol)symbolContext.Symbol;
+            if (!SymbolEqualityComparer.Default.Equals(method.ReturnType.OriginalDefinition, genericTask))
+            {
+                return;
+            }
+
+            if (!method.GetAttributes().Any(a => testAttributes.Contains(a.AttributeClass?.OriginalDefinition, SymbolEqualityComparer.Default)))
+            {
+                return;
+            }
+
+            // The defect is the return type, not any single attribute, so one diagnostic is reported at the return type
+            // even when the method carries several test attributes. A partial method has more than one declaration; the first is enough.
+            var location = method.DeclaringSyntaxReferences
+                .Select(r => r.GetSyntax(symbolContext.CancellationToken))
+                .OfType<MethodDeclarationSyntax>()
+                .Select(m => m.ReturnType.GetLocation())
+                .FirstOrDefault() ?? method.Locations[0];
+            symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location));
+        }, SymbolKind.Method);
     }
 }
