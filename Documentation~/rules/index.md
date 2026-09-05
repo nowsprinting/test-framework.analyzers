@@ -14,6 +14,7 @@ Rules about test method signatures and attribute combinations.
 | [UTF1001](UTF1001.md) | TestCase and TestCaseSource are not supported on coroutine test methods |
 | [UTF1002](UTF1002.md) | `Task<TResult>` is not supported as a test method return type |
 | [UTF1003](UTF1003.md) | Combining strategy attributes are not supported on coroutine test methods |
+| [UTF1004](UTF1004.md) | Async methods are not supported for OneTimeSetUp and OneTimeTearDown |
 
 ### Assertion (UTF2xxx)
 
