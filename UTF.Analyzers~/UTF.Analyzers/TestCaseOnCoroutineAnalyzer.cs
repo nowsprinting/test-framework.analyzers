@@ -21,7 +21,7 @@ public sealed class TestCaseOnCoroutineAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "Detects TestCaseAttribute or TestCaseSourceAttribute placed on a test method whose return type is System.Collections.IEnumerator (a coroutine-style test method).",
-        helpLinkUri: "https://nowsprinting.github.io/test-framework.analyzers/rules/UTF1001.html");
+        helpLinkUri: "https://nowsprinting.github.io/test-framework.analyzers/Documentation~/rules/UTF1001.md");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
