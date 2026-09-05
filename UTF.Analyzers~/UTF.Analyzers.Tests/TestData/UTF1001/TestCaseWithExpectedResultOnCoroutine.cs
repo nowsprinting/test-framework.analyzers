@@ -5,8 +5,8 @@ namespace UTF.Analyzers.Tests.TestData.UTF1001
 {
     public class TestCaseWithExpectedResultOnCoroutine
     {
-        [TestCase(1, ExpectedResult = null)]
-        public IEnumerator MyCoroutineTest(int value) // UTF1001
+        [TestCase(1, ExpectedResult = null)] // UTF1001
+        public IEnumerator MyCoroutineTest(int value)
         {
             yield return null;
         }

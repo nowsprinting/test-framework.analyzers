@@ -7,8 +7,8 @@ namespace UTF.Analyzers.Tests.TestData.UTF1001
     {
         private static readonly object[] s_cases = { 1, 2 };
 
-        [TestCaseSource(nameof(s_cases))]
-        public IEnumerator MyCoroutineTest(int value) // UTF1001
+        [TestCaseSource(nameof(s_cases))] // UTF1001
+        public IEnumerator MyCoroutineTest(int value)
         {
             yield return null;
         }

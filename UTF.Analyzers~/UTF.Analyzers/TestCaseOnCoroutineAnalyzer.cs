@@ -59,10 +59,18 @@ public sealed class TestCaseOnCoroutineAnalyzer : DiagnosticAnalyzer
                 return;
             }
 
-            if (method.GetAttributes().Any(a =>
-                    targets.Contains(a.AttributeClass?.OriginalDefinition, SymbolEqualityComparer.Default)))
+            foreach (var attribute in method.GetAttributes())
             {
-                symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, method.Locations[0]));
+                if (!targets.Contains(attribute.AttributeClass?.OriginalDefinition, SymbolEqualityComparer.Default))
+                {
+                    continue;
+                }
+
+                // Reported at the attribute rather than the method name so that each offending attribute is highlighted.
+                // ApplicationSyntaxReference is null only for attributes from metadata, which a SymbolAction on source methods never sees.
+                var location = attribute.ApplicationSyntaxReference?.GetSyntax(symbolContext.CancellationToken).GetLocation()
+                               ?? method.Locations[0];
+                symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location));
             }
         }, SymbolKind.Method);
     }
