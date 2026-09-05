@@ -11,9 +11,10 @@ namespace UTF.Analyzers.Tests
         [InlineData("TestCaseSourceOnGenericTask", 11, 22)]
         [InlineData("TestOnNonAsyncGenericTask", 9, 16)]
         [InlineData("MultipleTestCasesOnGenericTask", 10, 22)]
-        public async Task GenericTaskTestMethod_ReportsOnceAtReturnType(string fixture, int line, int column)
+        public async Task GenericTaskTestMethod_ReportsOnceAtReturnTypeWithItsName(string fixture, int line, int column)
         {
-            await Verifier.VerifyAsync($"UTF1002/{fixture}.cs", Verifier.Diagnostic().WithLocation(line, column));
+            await Verifier.VerifyAsync($"UTF1002/{fixture}.cs",
+                Verifier.Diagnostic().WithLocation(line, column).WithArguments("Task<int>"));
         }
 
         [Theory]

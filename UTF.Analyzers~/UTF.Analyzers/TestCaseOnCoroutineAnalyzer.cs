@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace UTF.Analyzers;
 
 /// <summary>
-/// UTF1001: TestCase and TestCaseSource are not supported on coroutine test methods.
+/// UTF1001: TestCase and TestCaseSource attributes are not supported on coroutine-style test methods.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class TestCaseOnCoroutineAnalyzer : DiagnosticAnalyzer
@@ -15,12 +15,12 @@ public sealed class TestCaseOnCoroutineAnalyzer : DiagnosticAnalyzer
 
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
-        title: "TestCase and TestCaseSource are not supported on coroutine test methods",
-        messageFormat: "Method-level parameterized tests cannot be used on coroutine-style test methods. Use the `async` keyword instead.",
+        title: "TestCase and TestCaseSource attributes are not supported on coroutine-style test methods",
+        messageFormat: "'{0}' is not supported on coroutine-style test methods. Use an 'async Task' test method instead.",
         category: "Structure",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Detects TestCaseAttribute or TestCaseSourceAttribute placed on a test method whose return type is System.Collections.IEnumerator (a coroutine-style test method).",
+        description: "Detects TestCaseAttribute or TestCaseSourceAttribute applied to a test method whose return type is System.Collections.IEnumerator (a coroutine-style test method).",
         helpLinkUri: "https://nowsprinting.github.io/test-framework.analyzers/Documentation~/rules/UTF1001.md");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
@@ -70,7 +70,7 @@ public sealed class TestCaseOnCoroutineAnalyzer : DiagnosticAnalyzer
                 // ApplicationSyntaxReference is null only for attributes from metadata, which a SymbolAction on source methods never sees.
                 var location = attribute.ApplicationSyntaxReference?.GetSyntax(symbolContext.CancellationToken).GetLocation()
                                ?? method.Locations[0];
-                symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location));
+                symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location, attribute.AttributeClass!.Name));
             }
         }, SymbolKind.Method);
     }

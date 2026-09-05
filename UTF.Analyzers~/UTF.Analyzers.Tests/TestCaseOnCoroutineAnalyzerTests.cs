@@ -8,13 +8,13 @@ namespace UTF.Analyzers.Tests
     public class TestCaseOnCoroutineAnalyzerTests
     {
         [Theory]
-        [InlineData("TestCaseOnCoroutine", new[] { 8, 9 })]
-        [InlineData("TestCaseSourceOnCoroutine", new[] { 10 })]
-        [InlineData("TestCaseWithExpectedResultOnCoroutine", new[] { 8 })]
-        [InlineData("UnityTestWithTestCaseOnCoroutine", new[] { 10 })]
-        public async Task IEnumeratorMethodWithMethodLevelParameterizedAttribute_ReportsAtEachAttribute(string fixture, int[] lines)
+        [InlineData("TestCaseOnCoroutine", "TestCaseAttribute", new[] { 8, 9 })]
+        [InlineData("TestCaseSourceOnCoroutine", "TestCaseSourceAttribute", new[] { 10 })]
+        [InlineData("TestCaseWithExpectedResultOnCoroutine", "TestCaseAttribute", new[] { 8 })]
+        [InlineData("UnityTestWithTestCaseOnCoroutine", "TestCaseAttribute", new[] { 10 })]
+        public async Task IEnumeratorMethodWithMethodLevelParameterizedAttribute_ReportsAtEachAttributeWithItsTypeName(string fixture, string attributeName, int[] lines)
         {
-            var expected = lines.Select(line => Verifier.Diagnostic().WithLocation(line, 10)).ToArray();
+            var expected = lines.Select(line => Verifier.Diagnostic().WithLocation(line, 10).WithArguments(attributeName)).ToArray();
             await Verifier.VerifyAsync($"UTF1001/{fixture}.cs", expected);
         }
 

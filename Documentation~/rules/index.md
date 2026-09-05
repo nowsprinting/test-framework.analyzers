@@ -11,10 +11,10 @@ Rules about test method signatures and attribute combinations.
 
 | Id | Title |
 |----|-------|
-| [UTF1001](UTF1001.md) | TestCase and TestCaseSource are not supported on coroutine test methods |
-| [UTF1002](UTF1002.md) | `Task<TResult>` is not supported as a test method return type |
-| [UTF1003](UTF1003.md) | Combining strategy attributes are not supported on coroutine test methods |
-| [UTF1004](UTF1004.md) | Async methods are not supported for OneTimeSetUp and OneTimeTearDown |
+| [UTF1001](UTF1001.md) | TestCase and TestCaseSource attributes are not supported on coroutine-style test methods |
+| [UTF1002](UTF1002.md) | Task<TResult> is not supported as a test method return type |
+| [UTF1003](UTF1003.md) | Pairwise, Sequential, and Combinatorial attributes are not supported on coroutine-style test methods |
+| [UTF1004](UTF1004.md) | OneTimeSetUp and OneTimeTearDown attributes are not supported on async methods |
 
 ### Assertion (UTF2xxx)
 
