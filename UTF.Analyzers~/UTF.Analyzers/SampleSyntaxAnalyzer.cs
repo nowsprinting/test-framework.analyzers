@@ -18,18 +18,12 @@ public class SampleSyntaxAnalyzer : DiagnosticAnalyzer
     // Preferred format of DiagnosticId is Your Prefix + Number, e.g. CA1234.
     public const string DiagnosticId = "AB0001";
 
-    // Feel free to use raw strings if you don't need localization.
-    private static readonly LocalizableString Title = new LocalizableResourceString(nameof(Resources.AB0001Title),
-        Resources.ResourceManager, typeof(Resources));
+    private const string Title = "Type name contains the company name";
 
     // The message that will be displayed to the user.
-    private static readonly LocalizableString MessageFormat =
-        new LocalizableResourceString(nameof(Resources.AB0001MessageFormat), Resources.ResourceManager,
-            typeof(Resources));
+    private const string MessageFormat = "Type name '{0}' contains the company name";
 
-    private static readonly LocalizableString Description =
-        new LocalizableResourceString(nameof(Resources.AB0001Description), Resources.ResourceManager,
-            typeof(Resources));
+    private const string Description = "Type names should not contain the company name.";
 
     // The category of the diagnostic (Design, Naming etc.).
     private const string Category = "Naming";

@@ -20,18 +20,12 @@ public class SampleSemanticAnalyzer : DiagnosticAnalyzer
     // Preferred format of DiagnosticId is Your Prefix + Number, e.g. CA1234.
     private const string DiagnosticId = "AB0002";
 
-    // Feel free to use raw strings if you don't need localization.
-    private static readonly LocalizableString Title = new LocalizableResourceString(nameof(Resources.AB0002Title),
-        Resources.ResourceManager, typeof(Resources));
+    private const string Title = "The impossible speed";
 
     // The message that will be displayed to the user.
-    private static readonly LocalizableString MessageFormat =
-        new LocalizableResourceString(nameof(Resources.AB0002MessageFormat), Resources.ResourceManager,
-            typeof(Resources));
+    private const string MessageFormat = "The specified speed '{0}' must be lower than the Speed of Light";
 
-    private static readonly LocalizableString Description =
-        new LocalizableResourceString(nameof(Resources.AB0002Description), Resources.ResourceManager,
-            typeof(Resources));
+    private const string Description = "The speed must be lower than the Speed of Light.";
 
     // The category of the diagnostic (Design, Naming etc.).
     private const string Category = "Usage";
