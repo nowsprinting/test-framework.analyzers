@@ -34,9 +34,14 @@ public sealed class TestCaseOnCoroutineAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        var testCase = context.Compilation.GetTypeByMetadataName("NUnit.Framework.TestCaseAttribute");
-        var testCaseSource = context.Compilation.GetTypeByMetadataName("NUnit.Framework.TestCaseSourceAttribute");
-        if (testCase is null && testCaseSource is null)
+        var targets = new[]
+            {
+                context.Compilation.GetTypeByMetadataName("NUnit.Framework.TestCaseAttribute"),
+                context.Compilation.GetTypeByMetadataName("NUnit.Framework.TestCaseSourceAttribute"),
+            }
+            .Where(t => t is not null)
+            .ToImmutableArray();
+        if (targets.IsEmpty)
         {
             return;
         }
@@ -54,17 +59,11 @@ public sealed class TestCaseOnCoroutineAnalyzer : DiagnosticAnalyzer
                 return;
             }
 
-            if (method.GetAttributes().Any(a => IsOneOf(a.AttributeClass, testCase, testCaseSource)))
+            if (method.GetAttributes().Any(a =>
+                    targets.Contains(a.AttributeClass?.OriginalDefinition, SymbolEqualityComparer.Default)))
             {
                 symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, method.Locations[0]));
             }
         }, SymbolKind.Method);
-    }
-
-    private static bool IsOneOf(INamedTypeSymbol? attribute, INamedTypeSymbol? a, INamedTypeSymbol? b)
-    {
-        var original = attribute?.OriginalDefinition;
-        return original is not null &&
-               (SymbolEqualityComparer.Default.Equals(original, a) || SymbolEqualityComparer.Default.Equals(original, b));
     }
 }
