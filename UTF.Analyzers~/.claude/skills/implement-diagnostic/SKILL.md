@@ -1,0 +1,90 @@
+---
+name: implement-diagnostic
+description: Implements a Roslyn analyzer and its tests test-first from a specification file (../Documentation~/rules/<DIAGNOSTIC_ID>.md). Use when asked to implement a diagnostic rule, or via /implement-diagnostic <spec file>. If the specification file does not exist yet, prompt the user to run design-diagnostic first.
+argument-hint: "<spec file>"
+license: MIT
+metadata:
+  author: Koji Hasegawa
+---
+
+# Implementing a Diagnostic Rule
+
+Implement the analyzer and its tests from `<spec file>` (e.g., `../Documentation~/rules/UTF1001.md`),
+test-first: Red → Green → Refactor.
+
+## Prerequisites
+
+- If the specification file does not exist or is still a draft, prompt the user to run the `design-diagnostic` skill and stop here.
+- Build and test with `dotnet build` / `dotnet test` in the repository root (the `UTF.Analyzers.sln` solution). This is not Unity Test Framework, so do not use `/run-tests` or `run_unity_tests`.
+- No Unity editor installation is required. Tests run in CI without any local file references: Unity, NUnit, and UTF APIs are provided as dummy sources under `UTF.Analyzers.Tests/TestData/Dummies/` (see `resources/test-data-conventions.md` in the `analyzer-code-writing-guide` skill).
+
+## Steps
+
+### Step 0: Read the spec and confirm the gaps
+
+1. Read the specification file and make sure you understand: diagnostic ID, Category, Severity, Title/MessageFormat/Description, detection conditions (all must be satisfied), exclusion conditions, Bad/Good examples, and known limitations.
+2. **Confirm any ambiguous or unspecified points with `AskUserQuestion` before implementing.** Even a reviewed spec always leaves branches that only surface during implementation (e.g., how to treat several branches that return different concrete types, where to point the suggestion when no matching interface type exists, how to express the expected diagnostic location in tests). Deciding these on your own leads to a spec mismatch later.
+3. Reflect minor decisions in the spec file right away; batch the decisions that affect the implementation into Step 5.
+
+### Step 1: Check the test harness prerequisites
+
+Check whether `UTF.Analyzers.Tests/TestDataVerifier.cs` exists.
+
+- **Exists**: the harness is set up. In the test file, alias
+  `using Verifier = UTF.Analyzers.Tests.TestDataVerifier<NewAnalyzerType>;` and reuse it. Do not modify the harness; go to Step 2.
+- **Does not exist** (only when implementing the first diagnostic in this repository): invoke the `setup-test-harness` skill
+  and finish it before continuing. Every later diagnostic reuses the harness, so this step completes immediately as "Exists" from then on.
+
+### Step 2: Skeleton (compilable)
+
+1. Create `UTF.Analyzers/<AnalyzerName>.cs`. **Complete `DiagnosticDescriptor` and `SupportedDiagnostics`**
+   (`Verifier.Diagnostic()` requires exactly one entry in `SupportedDiagnostics` and throws when it is empty, so this part cannot be left empty).
+   Set `helpLinkUri` on the descriptor to the rule's page on the documentation site (see `CLAUDE.md`).
+   Leave the body of `Initialize()` and the analysis logic empty.
+2. Helpers shared by multiple analyzers go in the `Utilities/` folder (namespace `UTF.Analyzers.Utilities`), following the `Analyzer.Utilities` layout in dotnet/roslyn-analyzers.
+3. Add one line to `AnalyzerReleases.Unshipped.md` (RS2008; it applies as soon as the descriptor exists).
+4. Confirm `dotnet build` passes, then commit.
+
+### Step 3: Test first
+
+1. Break the Bad/Good examples and the exclusion conditions in the spec into independent test cases.
+2. Create the fixtures at `UTF.Analyzers.Tests/TestData/<DIAGNOSTIC_ID>/<CaseName>.cs`, following the "Fixtures" section
+   of `resources/test-data-conventions.md` in the `analyzer-code-writing-guide` skill.
+3. **Compute `WithLocation(line, col)` mechanically by re-reading the fixture after writing it.** No eyeballing.
+   The skeleton reports nothing, so a wrong location looks identical to a correct one at this stage, and during implementation
+   you can no longer tell "analyzer bug" from "wrong expectation".
+4. Run `dotnet test` and confirm that **only the cases that should report are red**. Exclusion cases (iterators, overrides,
+   interface implementations, and whatever else the spec excludes) correctly pass with nothing reported, because the skeleton reports nothing.
+5. Commit the test code (touching it afterwards loses the test-first verifiability).
+
+### Step 4: Implement
+
+1. Read the `analyzer-code-writing-guide` skill (CancellationToken, `ConcurrentBuild`, `EnableConcurrentExecution`, backward compatibility, "why not" comments, handling diagnostics and review feedback).
+2. Implement the analyzer. Policy:
+   - Compare symbols with `SymbolEqualityComparer.Default` on `OriginalDefinition`. Never match on `.Name` strings (do not copy the old pattern in the sample analyzers)
+   - Resolve well-known types by metadata name (`GetTypeByMetadataName`) once per compilation in `RegisterCompilationStartAction`; avoid per-node `GetTypeByMetadataName` calls
+   - Never branch on `ContainingAssembly.Name`. In tests the Unity/NUnit/UTF types come from dummies compiled into the test assembly, not from `UnityEngine.TestRunner` or `nunit.framework`
+   - No code fixes. No localization (Title/MessageFormat/Description are English raw strings)
+3. Confirm all tests pass with `dotnet test`. Correcting an off-by-N `WithLocation` value is a fix to a location assertion and does not break test-first.
+   If the expected diagnostic arguments (`{0}`/`{1}`/`{2}`...) or the number of cases would need to change, suspect the implementation, not the tests.
+4. Commit the production code (including any unavoidable `WithLocation` corrections).
+
+### Step 5: Refactor and finalize the documentation
+
+1. Review the added/changed test files for duplicates and cases that can be merged into `[Theory]`/`[InlineData]`.
+2. Run the Claude Code built-in `/simplify` skill (`Skill({skill: "simplify"})`, not a plugin skill) and apply the quality improvements to the changed code.
+3. Re-confirm all tests pass with `dotnet test`.
+4. If possible, call `reformat_file` once on every file added or changed in Steps 1–4.<br>
+   **Known limitation**: `UTF.Analyzers.sln` is meant to be opened in a Rider instance separate from the Unity project.
+   If the connected Rider instance has the Unity solution open, the call fails with `Requested files are not part of the current solution`.
+   In that case do not force a switch; format by hand to match the conventions of the existing files and skip this item.
+5. Add the row to `../Documentation~/rules/index.md` if it is not there yet (normally already added by the `design-diagnostic` skill).
+6. Reflect any decisions from Step 0 that are not yet in the spec file (typically under "Notes" as known limitations).
+7. Commit the remaining changes.
+
+## Verification
+
+```bash
+dotnet build   # no new RS2008/RS2007
+dotnet test    # all green
+```

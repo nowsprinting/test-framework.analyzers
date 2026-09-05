@@ -9,6 +9,9 @@
   "displayName": "UTF.Analyzers",
   "documentationUrl": "https://nowsprinting.github.io/test-framework.analyzers/",
   "files": [
+    "Documentation~",
+    "UTF.Analyzers/",
+    "UTF.Analyzers.meta",
     "LICENSE.md*",
     "package.json*",
     "README.md*"

@@ -5,7 +5,15 @@ Roslyn analyzers for writing unit tests with Unity Test Framework.
 
 ## Diagnostics
 
-TBD
+| ID      | Category   | Description                                                                 |
+|---------|------------|-----------------------------------------------------------------------------|
+| UTF1xxx | Structure  | Test method signatures and attribute combinations                           |
+| UTF2xxx | Assertion  | Misuse of assertions and constraints                                        |
+| UTF3xxx | Suppressor | Suppressions of other analyzers' diagnostics that do not apply to UTF       |
+| UTF4xxx | Style      | Code that works but is not recommended                                      |
+| UTF5xxx | Extensions | Rules for authors of custom attributes, constraints, and comparers          |
+
+See details: [Diagnostics Index](Documentation~/index.md)
 
 
 ## Installation
@@ -38,25 +46,6 @@ git submodule add git@github.com:nowsprinting/test-framework.analyzers.git Packa
 
 ### Run tests
 
-TBD
-
-### Release workflow
-
-The release process is as follows:
-
-1. Run **Actions > Create release pull request > Run workflow**
-2. Merge created pull request
-
-Then, will do the release process automatically by [Release](.github/workflows/release.yml) workflow.
-After tagging, [OpenUPM](https://openupm.com/) retrieves the tag and updates it.
-
-> [!CAUTION]\
-> Do **NOT** manually operation the following operations:
-> - Create a release tag
-> - Publish draft releases
-
-> [!CAUTION]\
-> You must modify the package name to publish a forked package.
-
-> [!TIP]\
-> If you want to specify the version number to be released, change the version number of the draft release before running the "Create release pull request" workflow.
+```bash
+cd Packages/com.nowsprinting.test-framework.analyzers/UTF.Analyzers~ && dotnet test
+```

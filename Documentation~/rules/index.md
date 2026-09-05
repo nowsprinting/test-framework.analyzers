@@ -1,0 +1,41 @@
+# UTF.Analyzers
+
+Roslyn analyzers for writing unit tests with Unity Test Framework.
+
+
+## Diagnostics
+
+### Structure (UTF1xxx)
+
+Rules about test method signatures and attribute combinations.
+
+| Id | Title |
+|----|-------|
+
+### Assertion (UTF2xxx)
+
+Rules about misuse of assertions and constraints.
+
+| Id | Title |
+|----|-------|
+
+### Suppressor (UTF3xxx)
+
+Suppressions of diagnostics reported by other analyzers that do not apply to Unity Test Framework.
+
+| Id | Title |
+|----|-------|
+
+### Style (UTF4xxx)
+
+Rules about code that works but is not recommended.
+
+| Id | Title |
+|----|-------|
+
+### Extensions (UTF5xxx)
+
+Rules for authors of custom attributes, constraints, and comparers.
+
+| Id | Title |
+|----|-------|
