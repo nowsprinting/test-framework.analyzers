@@ -13,6 +13,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write  # octocov comments the coverage report
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
@@ -25,7 +28,16 @@ jobs:
         run: dotnet build -c Release UTF.Analyzers~/UTF.Analyzers.sln
 
       - name: Test
-        run: dotnet test -c Release UTF.Analyzers~/UTF.Analyzers.sln --no-build
+        run: >
+          dotnet test -c Release UTF.Analyzers~/UTF.Analyzers.sln --no-build
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:CoverletOutput=coverage.cobertura.xml
+          /p:Exclude="[UTF.Analyzers.Tests]*"
+
+      - name: Run octocov
+        uses: k1LoW/octocov-action@73d561f65d59e66899ed5c87e4621a913b5d5c20 # v1
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false  # forks cannot write PR comments
 
       - name: Pack
         run: dotnet pack UTF.Analyzers~/UTF.Analyzers/UTF.Analyzers.csproj -c Release

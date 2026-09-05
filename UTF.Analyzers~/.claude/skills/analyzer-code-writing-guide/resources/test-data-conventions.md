@@ -34,7 +34,7 @@ Test data is therefore compiled twice (the Tests project build and the verifier'
 
 ## Fixtures: `UTF.Analyzers.Tests/TestData/<DIAGNOSTIC_ID>/<CaseName>.cs`
 
-- One case per file, file-scoped namespace `UTF.Analyzers.Tests.TestData.<DIAGNOSTIC_ID>;`
+- One case per file, block-scoped namespace `UTF.Analyzers.Tests.TestData.<DIAGNOSTIC_ID>` (file-scoped namespaces need C# 10)
 - Top-level type name = file name. When a case needs a pair of types (base/derived, interface/implementation, etc.), match only the primary type to the file name and give helper types a name unique within the file
 - Self-contained. The verifier compiles that single file plus the dummies, so never reference types from sibling fixtures
 - Reference Unity/NUnit/UTF APIs only through the dummies. If a dummy for the required type or member is missing, extend the existing dummy file (see "Dummies" above). Never declare a fixture-local type in a real namespace such as `UnityEngine` or `NUnit.Framework`
@@ -42,4 +42,4 @@ Test data is therefore compiled twice (the Tests project build and the verifier'
 - In Bad fixtures, put a trailing comment containing only the diagnostic ID (e.g., `// UTF1001`) on the line where the reported location starts.
   No message, no reason, nothing else. Good fixtures and exclusion cases carry no comment
 - No unused fields (`CS0169`/`CS0649` appear in both compilations and the verifier fails on any unexpected diagnostic). Unused private methods are safe (IDE inspections do not run in the verifier)
-- Syntax up to the `<LangVersion>` pinned in the Tests project
+- Syntax up to the `<LangVersion>` pinned in the Tests project (C# 9, the Unity 6 level)

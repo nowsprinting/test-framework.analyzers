@@ -11,6 +11,7 @@ Rules about test method signatures and attribute combinations.
 
 | Id | Title |
 |----|-------|
+| [UTF1001](UTF1001.md) | TestCase and TestCaseSource are not supported on coroutine test methods |
 
 ### Assertion (UTF2xxx)
 
