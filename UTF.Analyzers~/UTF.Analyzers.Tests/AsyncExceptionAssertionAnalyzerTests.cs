@@ -13,7 +13,8 @@ namespace UTF.Analyzers.Tests
         [InlineData("CatchAsyncGeneric", 12, 13, "Assert.CatchAsync")]
         [InlineData("DoesNotThrowAsyncMethodGroup", 11, 13, "Assert.DoesNotThrowAsync")]
         [InlineData("UsingStaticAssert", 12, 13, "Assert.DoesNotThrowAsync")]
-        public async Task AsyncExceptionAssertion_ReportsAtInvocationWithClassAndMethodName(string fixture, int line, int column, string methodName)
+        public async Task AsyncExceptionAssertion_ReportsAtInvocationWithClassAndMethodName(string fixture, int line,
+            int column, string methodName)
         {
             await Verifier.VerifyAsync($"UTF2001/{fixture}.cs",
                 Verifier.Diagnostic().WithLocation(line, column).WithArguments(methodName));

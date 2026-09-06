@@ -17,7 +17,8 @@ public sealed class AsyncExceptionAssertionAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
         title: "Assert.ThrowsAsync, CatchAsync, and DoesNotThrowAsync are not supported",
-        messageFormat: "'{0}' is not supported. Test the exception with try/catch in an 'async Task' test method instead.",
+        messageFormat:
+        "'{0}' is not supported. Test the exception with try/catch in an 'async Task' test method instead.",
         category: "Assertion",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
@@ -47,10 +48,6 @@ public sealed class AsyncExceptionAssertionAnalyzer : DiagnosticAnalyzer
         var reported = new[] { "ThrowsAsync", "CatchAsync", "DoesNotThrowAsync" }
             .SelectMany(name => assert.GetMembers(name).OfType<IMethodSymbol>())
             .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
-        if (reported.IsEmpty)
-        {
-            return;
-        }
 
         context.RegisterOperationAction(operationContext =>
         {
@@ -63,7 +60,8 @@ public sealed class AsyncExceptionAssertionAnalyzer : DiagnosticAnalyzer
 
             // The name is built from the symbol rather than the syntax so that a call through "using static" still reads "Assert.X".
             var location = operationContext.Operation.Syntax.GetLocation();
-            operationContext.ReportDiagnostic(Diagnostic.Create(Rule, location, $"{method.ContainingType.Name}.{method.Name}"));
+            operationContext.ReportDiagnostic(Diagnostic.Create(Rule, location,
+                $"{method.ContainingType.Name}.{method.Name}"));
         }, OperationKind.Invocation);
     }
 }

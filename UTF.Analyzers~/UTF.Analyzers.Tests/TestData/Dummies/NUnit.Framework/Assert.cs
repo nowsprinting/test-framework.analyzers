@@ -1,6 +1,7 @@
 // Dummy of NUnit.Framework.Assert. Declaration-only; see test-data-conventions.md.
 // Bodies never forward to another Assert member: the dummy is analyzed by the analyzer under test,
 // so a CatchAsync that calls ThrowsAsync (as the real one does) would report UTF2001 in every test.
+
 using System;
 
 namespace NUnit.Framework

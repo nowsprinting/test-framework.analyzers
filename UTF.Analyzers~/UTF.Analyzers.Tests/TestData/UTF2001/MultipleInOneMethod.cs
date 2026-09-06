@@ -10,7 +10,7 @@ namespace UTF.Analyzers.Tests.TestData.UTF2001
         public void BothFreeze()
         {
             var e = Assert.ThrowsAsync<InvalidOperationException>(FooAsync); // UTF2001
-            Assert.DoesNotThrowAsync(BarAsync); // UTF2001
+            Assert.DoesNotThrowAsync(BarAsync);                              // UTF2001
             Console.WriteLine(e);
         }
 
