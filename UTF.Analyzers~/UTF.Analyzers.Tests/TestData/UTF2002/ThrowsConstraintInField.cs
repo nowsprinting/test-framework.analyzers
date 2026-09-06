@@ -1,16 +1,18 @@
 using System;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
 
 namespace UTF.Analyzers.Tests.TestData.UTF2002
 {
-    public class ThrowsConstraintInVariable
+    public class ThrowsConstraintInField
     {
+        private static readonly IResolveConstraint Constraint = Throws.InstanceOf<Exception>();
+
         [Test]
         public void Test()
         {
-            var constraint = Throws.TypeOf<InvalidOperationException>();
-            Assert.That(async () => await FooAsync(), constraint); // UTF2002
+            Assert.That(async () => await FooAsync(), Constraint); // UTF2002
         }
 
         private static async Task FooAsync()

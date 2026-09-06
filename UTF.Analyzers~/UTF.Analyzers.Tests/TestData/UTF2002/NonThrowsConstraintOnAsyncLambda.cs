@@ -1,3 +1,4 @@
+// Not reported by UTF2002 because the constraint does not start with Throws; UTF2003 covers this case.
 using System;
 using System.Threading.Tasks;
 using NUnit.Framework;

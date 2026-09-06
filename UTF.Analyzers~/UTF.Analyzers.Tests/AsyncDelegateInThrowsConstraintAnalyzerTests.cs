@@ -16,6 +16,10 @@ namespace UTF.Analyzers.Tests
         [InlineData("ThrowsTypeOfValueTaskAsyncLambda", 12, 25, "Throws.TypeOf")]
         [InlineData("ThrowsTypeOfUniTaskLambda", 12, 25, "Throws.TypeOf")]
         [InlineData("ThrowsNothingAwaitableMethodGroup", 12, 25, "Throws.Nothing")]
+        [InlineData("ThrowsConstraintInVariable", 13, 25, "Throws.TypeOf")]
+        [InlineData("ThrowsConstraintInField", 15, 25, "Throws.InstanceOf")]
+        [InlineData("NewThrowsConstraint", 13, 25, "ThrowsConstraint")]
+        [InlineData("NewThrowsNothingConstraint", 12, 25, "ThrowsNothingConstraint")]
         [InlineData("AssertThrowsAsyncLambda", 12, 54, "Assert.Throws")]
         [InlineData("AssertThrowsTypeAsyncLambda", 12, 62, "Assert.Throws")]
         [InlineData("AssertCatchAsyncLambda", 12, 26, "Assert.Catch")]
@@ -38,7 +42,6 @@ namespace UTF.Analyzers.Tests
         [Theory]
         [InlineData("SyncDelegates")]
         [InlineData("TaskResultInsteadOfDelegate")]
-        [InlineData("ThrowsConstraintInVariable")]
         [InlineData("NonThrowsConstraintOnAsyncLambda")]
         [InlineData("TryCatchGood")]
         public async Task NotAsyncDelegateInReportedApi_NoDiagnostic(string fixture)
