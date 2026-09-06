@@ -5,7 +5,7 @@ using NUnit.Framework.Constraints;
 
 namespace NUnit.Framework
 {
-    public class Does
+    public abstract class Does
     {
         public static SubstringConstraint Contain(string expected)
         {

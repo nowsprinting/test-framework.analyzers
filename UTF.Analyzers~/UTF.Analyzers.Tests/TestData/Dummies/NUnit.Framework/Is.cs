@@ -5,7 +5,7 @@ using NUnit.Framework.Constraints;
 
 namespace NUnit.Framework
 {
-    public class Is
+    public abstract class Is
     {
         public static EqualConstraint EqualTo(object expected)
         {

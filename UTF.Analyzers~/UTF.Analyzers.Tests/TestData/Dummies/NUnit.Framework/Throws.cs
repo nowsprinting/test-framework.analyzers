@@ -5,7 +5,7 @@ using NUnit.Framework.Constraints;
 
 namespace NUnit.Framework
 {
-    public static class Throws
+    public abstract class Throws
     {
         public static ResolvableConstraintExpression Exception => throw new NotImplementedException();
 
