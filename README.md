@@ -57,6 +57,7 @@ Suppressions of diagnostics reported by other analyzers that do not apply to Uni
 | Id | Title |
 |----|-------|
 | [UTF3001](Documentation~/rules/UTF3001.md) | Suppress NUnit2045 (Use Assert.Multiple) when Assert.Multiple is not available |
+| [UTF3002](Documentation~/rules/UTF3002.md) | Suppress CS8618 (Non-nullable field or property is uninitialized) when the member is initialized in a UnitySetUp or UnityOneTimeSetUp method |
 
 ### Style (UTF4xxx)
 
