@@ -1,0 +1,15 @@
+// Dummy of NUnit.Framework.Is. Declaration-only; see test-data-conventions.md.
+
+using System;
+using NUnit.Framework.Constraints;
+
+namespace NUnit.Framework
+{
+    public class Is
+    {
+        public static EqualConstraint EqualTo(object expected)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}
