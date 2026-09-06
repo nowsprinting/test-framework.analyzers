@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -22,5 +23,17 @@ public sealed class UseAssertMultipleSuppressor : DiagnosticSuppressor
 
     public override void ReportSuppressions(SuppressionAnalysisContext context)
     {
+        // Suppressing unconditionally would hide a valid suggestion for a project whose nunit.framework defines Assert.Multiple.
+        var assert = context.Compilation.GetTypeByMetadataName("NUnit.Framework.Assert");
+        if (assert is null || assert.GetMembers("Multiple").Any())
+        {
+            return;
+        }
+
+        foreach (var diagnostic in context.ReportedDiagnostics)
+        {
+            context.CancellationToken.ThrowIfCancellationRequested();
+            context.ReportSuppression(Suppression.Create(Rule, diagnostic));
+        }
     }
 }
