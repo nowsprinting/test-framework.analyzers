@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -25,7 +24,7 @@ public sealed class UseAssertMultipleSuppressor : DiagnosticSuppressor
     {
         // Suppressing unconditionally would hide a valid suggestion for a project whose nunit.framework defines Assert.Multiple.
         var assert = context.Compilation.GetTypeByMetadataName("NUnit.Framework.Assert");
-        if (assert is null || assert.GetMembers("Multiple").Any())
+        if (assert is null || !assert.GetMembers("Multiple").IsEmpty)
         {
             return;
         }

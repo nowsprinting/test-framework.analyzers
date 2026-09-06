@@ -24,7 +24,13 @@ namespace UTF.Analyzers.Tests
         /// <param name="testDataPath">Path relative to TestData/, e.g. "UTF1001/ReturnsList.cs"</param>
         public static Task VerifyAsync(string testDataPath, params DiagnosticResult[] expected)
         {
-            var test = new Test { TestCode = File.ReadAllText(Path.Combine(TestDataFiles.Root, testDataPath)) };
+            return VerifyAsync(new Test(), testDataPath, expected);
+        }
+
+        /// <param name="test">A subclass instance when the case needs more than the single analyzer, e.g. a suppressor with the analyzer it suppresses</param>
+        public static Task VerifyAsync(Test test, string testDataPath, params DiagnosticResult[] expected)
+        {
+            test.TestCode = File.ReadAllText(Path.Combine(TestDataFiles.Root, testDataPath));
             // WithLocation(line, col) without a path resolves against DefaultFilePath ("/0/Test0.cs"), i.e. Sources[0].
             // The fixture must therefore be added first (via TestCode above) and the dummies only afterwards;
             // adding the dummies in the constructor would push the fixture to a later index and break every location assertion.
