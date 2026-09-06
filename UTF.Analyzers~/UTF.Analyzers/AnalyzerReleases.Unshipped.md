@@ -12,3 +12,4 @@ UTF2002 | Assertion | Error | Async delegates are not supported as the actual va
 UTF2003 | Assertion | Error | Async delegates are not supported as the actual value of the constraint model
 UTF2004 | Assertion | Error | Only TestDelegate is supported as the actual value of the AllocatingGCMemory constraint
 UTF2005 | Assertion | Error | DelayedConstraint is not supported
+UTF5001 | Extensions | Error | ApplyToTest, ApplyToContext, and Wrap must not throw exceptions

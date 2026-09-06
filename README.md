@@ -70,6 +70,7 @@ Rules for authors of custom attributes, constraints, and comparers.
 
 | Id | Title |
 |----|-------|
+| [UTF5001](Documentation~/rules/UTF5001.md) | ApplyToTest, ApplyToContext, and Wrap must not throw exceptions |
 
 
 ## Installation
