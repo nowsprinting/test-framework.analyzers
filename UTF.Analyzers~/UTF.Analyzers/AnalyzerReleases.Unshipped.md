@@ -10,3 +10,4 @@ UTF2001 | Assertion | Error | Assert.ThrowsAsync, CatchAsync, and DoesNotThrowAs
 UTF2002 | Assertion | Error | Async delegates are not supported as the actual value of Throws constraints, Assert.Throws, Assert.Catch, and Assert.DoesNotThrow
 UTF2003 | Assertion | Error | Async delegates are not supported as the actual value of the constraint model
 UTF2004 | Assertion | Error | Only TestDelegate is supported as the actual value of the AllocatingGCMemory constraint
+UTF2005 | Assertion | Error | DelayedConstraint is not supported
