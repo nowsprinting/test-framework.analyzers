@@ -3,7 +3,6 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
-using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -43,8 +42,7 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
         var throws = context.Compilation.GetTypeByMetadataName("NUnit.Framework.Throws");
         var resolveConstraint =
             context.Compilation.GetTypeByMetadataName("NUnit.Framework.Constraints.IResolveConstraint");
-        var taskTypes = TaskTypes.Resolve(context.Compilation);
-        if (assert is null || throws is null || resolveConstraint is null || taskTypes is null)
+        if (assert is null || throws is null || resolveConstraint is null)
         {
             return;
         }
@@ -71,7 +69,7 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
             // Arguments are located by parameter type rather than by position so that the message overloads
             // (del, expr, message, args) and Assert.Throws(Type, TestDelegate) are matched the same way.
             var argument = invocation.Arguments.FirstOrDefault(a => a.Parameter?.Type.TypeKind == TypeKind.Delegate);
-            if (argument is null || !IsAsyncDelegate(argument, taskTypes))
+            if (argument is null || !IsAsyncDelegate(argument))
             {
                 return;
             }
@@ -135,14 +133,19 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    /// Mirrors NUnit's AsyncInvocationRegion.IsAsyncOperation. The return type is read from the bound delegate parameter
-    /// (ActualValueDelegate&lt;Task&gt;) rather than from the lambda, so a delegate held in a variable is covered too;
-    /// the async modifier must come from the creation target because it is the only trace of an async void lambda on a TestDelegate.
+    /// The delegate counts as async when its return type is awaitable or its creation target has the async modifier.
+    /// NUnit's own check (return type name starts with "System.Threading.Tasks.Task", or AsyncStateMachineAttribute) is
+    /// deliberately not mirrored: a non-async lambda returning ValueTask, UniTask, or Awaitable slips past that check,
+    /// so NUnit neither waits for it nor observes the exception thrown after the first await, and the test fails or
+    /// passes for the wrong reason. The fix is the same try/catch, so the rule reports every awaitable.
+    /// The return type is read from the bound delegate parameter (ActualValueDelegate&lt;Task&gt;) rather than from the
+    /// lambda, so a delegate held in a variable is covered too; the async modifier must come from the creation target
+    /// because it is the only trace of an async void lambda on a TestDelegate.
     /// </summary>
-    private static bool IsAsyncDelegate(IArgumentOperation argument, TaskTypes taskTypes)
+    private static bool IsAsyncDelegate(IArgumentOperation argument)
     {
         var invoke = ((INamedTypeSymbol)argument.Parameter!.Type).DelegateInvokeMethod;
-        if (invoke is not null && taskTypes.IsTask(invoke.ReturnType))
+        if (invoke is not null && IsAwaitable(invoke.ReturnType))
         {
             return true;
         }
@@ -155,4 +158,12 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
             _ => false,
         };
     }
+
+    /// <summary>
+    /// The awaitable pattern is matched by member name because the language defines it that way; there is no symbol
+    /// to compare against. Extension-method GetAwaiter is not resolved, which is a known limitation of the rule.
+    /// </summary>
+    private static bool IsAwaitable(ITypeSymbol type) =>
+        type.GetMembers("GetAwaiter").OfType<IMethodSymbol>()
+            .Any(m => !m.IsStatic && m.Parameters.IsEmpty && m.TypeParameters.IsEmpty);
 }
