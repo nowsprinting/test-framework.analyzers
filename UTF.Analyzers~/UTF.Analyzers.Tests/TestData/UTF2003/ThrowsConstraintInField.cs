@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
 
-namespace UTF.Analyzers.Tests.TestData.UTF2002
+namespace UTF.Analyzers.Tests.TestData.UTF2003
 {
     public class ThrowsConstraintInField
     {
@@ -12,13 +12,13 @@ namespace UTF.Analyzers.Tests.TestData.UTF2002
         [Test]
         public void Test()
         {
-            Assert.That(async () => await FooAsync(), Constraint); // UTF2002
+            Assert.That(async () => await GetAsync(), Constraint); // UTF2003
         }
 
-        private static async Task FooAsync()
+        private static async Task<int> GetAsync()
         {
             await Task.Yield();
-            throw new InvalidOperationException("boom");
+            return 1;
         }
     }
 }
