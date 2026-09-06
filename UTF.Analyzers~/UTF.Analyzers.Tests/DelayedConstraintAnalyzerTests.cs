@@ -7,11 +7,11 @@ namespace UTF.Analyzers.Tests
     public class DelayedConstraintAnalyzerTests
     {
         [Theory]
-        [InlineData("AfterPolling", 12, 38)]
-        [InlineData("AfterSingle", 12, 38)]
-        [InlineData("PlainValue", 12, 32)]
-        [InlineData("AfterInLocal", 12, 30)]
-        [InlineData("AfterOnCustomConstraint", 13, 38)]
+        [InlineData("AfterPolling", 12, 55)]
+        [InlineData("AfterSingle", 12, 55)]
+        [InlineData("PlainValue", 12, 49)]
+        [InlineData("AfterInLocal", 12, 47)]
+        [InlineData("AfterOnCustomConstraint", 13, 61)]
         [InlineData("ExplicitConstruction", 13, 38)]
         public async Task DelayedConstraint_ReportsAtCreation(string fixture, int line, int column)
         {

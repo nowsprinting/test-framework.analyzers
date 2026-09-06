@@ -1,7 +1,9 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
+using Microsoft.CodeAnalysis.Text;
 using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
@@ -50,17 +52,31 @@ public sealed class DelayedConstraintAnalyzer : DiagnosticAnalyzer
         context.RegisterOperationAction(operationContext =>
         {
             operationContext.CancellationToken.ThrowIfCancellationRequested();
-            var operation = operationContext.Operation;
-            var reported = operation switch
+            var location = operationContext.Operation switch
             {
-                IInvocationOperation invocation => afterMethods.Contains(invocation.TargetMethod.OriginalDefinition),
-                IObjectCreationOperation creation => SymbolEqualityComparer.Default.Equals(creation.Type?.OriginalDefinition, delayedConstraint),
-                _ => false
+                IInvocationOperation invocation when afterMethods.Contains(invocation.TargetMethod.OriginalDefinition) =>
+                    AfterLocation(invocation),
+                IObjectCreationOperation creation when SymbolEqualityComparer.Default.Equals(
+                    creation.Type?.OriginalDefinition, delayedConstraint) => creation.Syntax.GetLocation(),
+                _ => null
             };
-            if (reported)
+            if (location is not null)
             {
-                operationContext.ReportDiagnostic(Diagnostic.Create(Rule, operation.Syntax.GetLocation()));
+                operationContext.ReportDiagnostic(Diagnostic.Create(Rule, location));
             }
         }, OperationKind.Invocation, OperationKind.ObjectCreation);
+    }
+
+    /// <summary>
+    /// Highlights only "After(...)" rather than the whole chain, which usually starts with an unrelated
+    /// constraint such as Is.EqualTo(...) that the user must keep.
+    /// </summary>
+    private static Location AfterLocation(IInvocationOperation invocation)
+    {
+        var syntax = invocation.Syntax;
+        var start = syntax is InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax access }
+            ? access.Name.SpanStart
+            : syntax.SpanStart;
+        return Location.Create(syntax.SyntaxTree, TextSpan.FromBounds(start, syntax.Span.End));
     }
 }
