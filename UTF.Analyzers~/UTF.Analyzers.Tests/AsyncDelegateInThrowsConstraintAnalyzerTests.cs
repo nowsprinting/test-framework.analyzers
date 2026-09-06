@@ -13,6 +13,8 @@ namespace UTF.Analyzers.Tests
         [InlineData("ThrowsExceptionPropertyRoot", 12, 25, "Throws.Exception")]
         [InlineData("ThrowsTypeOfGenericTaskLambdaWithMessage", 12, 25, "Throws.TypeOf")]
         [InlineData("UsingStaticThrows", 13, 25, "Throws.TypeOf")]
+        [InlineData("ThrowsTypeOfValueTaskAsyncLambda", 12, 25, "Throws.TypeOf")]
+        [InlineData("ThrowsTypeOfUniTaskLambda", 12, 25, "Throws.TypeOf")]
         [InlineData("AssertThrowsAsyncLambda", 12, 54, "Assert.Throws")]
         [InlineData("AssertThrowsTypeAsyncLambda", 12, 62, "Assert.Throws")]
         [InlineData("AssertCatchAsyncLambda", 12, 26, "Assert.Catch")]
