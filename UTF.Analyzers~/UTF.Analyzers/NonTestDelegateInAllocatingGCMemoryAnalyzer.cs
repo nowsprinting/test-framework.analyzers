@@ -79,15 +79,40 @@ public sealed class NonTestDelegateInAllocatingGCMemoryAnalyzer : DiagnosticAnal
 
     /// <summary>
     /// The static type of the constraint argument is not enough: wrappers such as After turn it into DelayedConstraint,
-    /// so every call and object creation in the chain is checked.
+    /// so every call and object creation in the chain is checked. A local is followed to its initializer because
+    /// "var constraint = Is.Not.AllocatingGCMemory();" is a natural way to write the assertion; the shared walker
+    /// does not do this because a variable-held Throws constraint is deliberately left to UTF2003.
+    /// ponytail: reassignment after the initializer is not seen, add flow analysis if it ever matters.
     /// </summary>
-    private static bool ChainCreates(IOperation? constraint, INamedTypeSymbol constraintType) =>
-        AsyncDelegateAnalysis.ConstraintChain(constraint).Any(node => node switch
+    private static bool ChainCreates(IOperation? constraint, INamedTypeSymbol constraintType)
+    {
+        foreach (var node in AsyncDelegateAnalysis.ConstraintChain(constraint))
         {
-            IInvocationOperation call => SymbolEqualityComparer.Default.Equals(
-                call.TargetMethod.ReturnType.OriginalDefinition, constraintType),
-            IObjectCreationOperation creation => SymbolEqualityComparer.Default.Equals(
-                creation.Type?.OriginalDefinition, constraintType),
-            _ => false,
-        });
+            switch (node)
+            {
+                case IInvocationOperation call when SymbolEqualityComparer.Default.Equals(
+                    call.TargetMethod.ReturnType.OriginalDefinition, constraintType):
+                case IObjectCreationOperation creation when SymbolEqualityComparer.Default.Equals(
+                    creation.Type?.OriginalDefinition, constraintType):
+                    return true;
+                case ILocalReferenceOperation local:
+                    return ChainCreates(Initializer(local), constraintType);
+            }
+        }
+
+        return false;
+    }
+
+    private static IOperation? Initializer(ILocalReferenceOperation reference)
+    {
+        var root = (IOperation)reference;
+        while (root.Parent is not null)
+        {
+            root = root.Parent;
+        }
+
+        return root.Descendants().OfType<IVariableDeclaratorOperation>()
+            .FirstOrDefault(d => SymbolEqualityComparer.Default.Equals(d.Symbol, reference.Local))
+            ?.Initializer?.Value;
+    }
 }

@@ -17,6 +17,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("NewConstraint", 15, "ActualValueDelegate<bool>")]
         [InlineData("WithMessage", 15, "ActualValueDelegate<bool>")]
         [InlineData("TaskValue", 16, "Task<int>")]
+        [InlineData("ConstraintInVariable", 16, "ActualValueDelegate<bool>")]
         public async Task NonTestDelegateActual_ReportsAtActualArgumentWithBoundType(string fixture, int line,
             string boundType)
         {
@@ -29,7 +30,6 @@ namespace UTF.Analyzers.Tests
         [InlineData("AsyncLambdaOwnedByUTF2003")]
         [InlineData("ThrowsNothingAndExtensionChain")]
         [InlineData("OtherConstraint")]
-        [InlineData("ConstraintInVariable")]
         public async Task TestDelegateOrOutOfScope_NoDiagnostic(string fixture)
         {
             await Verifier.VerifyAsync($"UTF2004/{fixture}.cs");

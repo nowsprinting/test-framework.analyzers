@@ -13,7 +13,7 @@ namespace UTF.Analyzers.Tests.TestData.UTF2004
         public void Test()
         {
             var constraint = Is.Not.AllocatingGCMemory();
-            Assert.That(() => _dict.Remove(1), constraint);
+            Assert.That(() => _dict.Remove(1), constraint); // UTF2004
         }
     }
 }

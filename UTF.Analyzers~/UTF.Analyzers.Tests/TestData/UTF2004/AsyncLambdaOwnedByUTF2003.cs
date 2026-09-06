@@ -14,6 +14,7 @@ namespace UTF.Analyzers.Tests.TestData.UTF2004
         public void Test()
         {
             Assert.That(async () => { await Task.Yield(); _dict.Remove(1); }, Is.Not.AllocatingGCMemory());
+            // Reported by UTF2003: the async delegate is owned by the constraint model rule.
         }
     }
 }

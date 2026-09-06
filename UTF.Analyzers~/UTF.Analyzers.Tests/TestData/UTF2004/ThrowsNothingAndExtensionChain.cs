@@ -10,6 +10,7 @@ namespace UTF.Analyzers.Tests.TestData.UTF2004
         public void Test()
         {
             Assert.That(async () => await Task.Yield(), Throws.Nothing.And.Not.AllocatingGCMemory());
+            // Reported by UTF2002: the async delegate is owned by the Throws constraint rule.
         }
     }
 }
