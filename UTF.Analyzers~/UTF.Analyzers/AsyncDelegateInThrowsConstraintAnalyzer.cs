@@ -55,8 +55,8 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
                 "NUnit.Framework.Constraints.ThrowsConstraint", "NUnit.Framework.Constraints.ThrowsNothingConstraint",
             }
             .Select(context.Compilation.GetTypeByMetadataName)
-            .Where(t => t is not null)
-            .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
+            .OfType<ISymbol>()
+            .ToImmutableHashSet(SymbolEqualityComparer.Default);
 
         var that = assert.GetMembers("That").OfType<IMethodSymbol>()
             .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
@@ -99,7 +99,7 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
                     }
                 }
 
-                var root = ThrowsRoot(constraint, operationContext.Compilation, throws, throwsConstraintTypes,
+                var root = ThrowsRoot(constraint, invocation.SemanticModel, throws, throwsConstraintTypes,
                     depth: 0, operationContext.CancellationToken);
                 if (root is null)
                 {
@@ -121,7 +121,7 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
     /// analysis is not worth its cost for test code, and an untracked Throws constraint falls through to UTF2003
     /// rather than going unreported.
     /// </summary>
-    private static string? ThrowsRoot(IOperation? operation, Compilation compilation, INamedTypeSymbol throws,
+    private static string? ThrowsRoot(IOperation? operation, SemanticModel? semanticModel, INamedTypeSymbol throws,
         ImmutableHashSet<ISymbol> throwsConstraintTypes, int depth, CancellationToken cancellationToken)
     {
         // Fields can initialize each other in a cycle; the bound keeps the walk finite.
@@ -152,10 +152,10 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
                         ? creation.Type.Name
                         : null;
                 case ILocalReferenceOperation local:
-                    return ThrowsRoot(Initializer(local.Local, compilation, cancellationToken), compilation, throws,
+                    return ThrowsRoot(Initializer(local.Local, semanticModel, cancellationToken), semanticModel, throws,
                         throwsConstraintTypes, depth + 1, cancellationToken);
                 case IFieldReferenceOperation field:
-                    return ThrowsRoot(Initializer(field.Field, compilation, cancellationToken), compilation, throws,
+                    return ThrowsRoot(Initializer(field.Field, semanticModel, cancellationToken), semanticModel, throws,
                         throwsConstraintTypes, depth + 1, cancellationToken);
                 default:
                     return null;
@@ -167,15 +167,21 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
             : null;
     }
 
-    private static IOperation? Initializer(ISymbol symbol, Compilation compilation, CancellationToken cancellationToken)
+    /// <summary>
+    /// Resolves the initializer with the semantic model of the invocation. Compilation.GetSemanticModel is not used
+    /// (RS1030: it may build a model that the analyzer driver has not cached), so a field declared in another file,
+    /// e.g. a partial class or a shared base class, is not followed and falls through to UTF2003.
+    /// </summary>
+    private static IOperation? Initializer(ISymbol symbol, SemanticModel? semanticModel,
+        CancellationToken cancellationToken)
     {
         // Locals and fields share VariableDeclaratorSyntax; a symbol from metadata has no syntax reference.
         var declarator = symbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken)
             as VariableDeclaratorSyntax;
         var value = declarator?.Initializer?.Value;
-        return value is null
+        return value is null || semanticModel is null || value.SyntaxTree != semanticModel.SyntaxTree
             ? null
-            : compilation.GetSemanticModel(value.SyntaxTree).GetOperation(value, cancellationToken);
+            : semanticModel.GetOperation(value, cancellationToken);
     }
 
     /// <summary>
