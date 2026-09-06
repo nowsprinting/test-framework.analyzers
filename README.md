@@ -4,7 +4,8 @@
 [![Build](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/build.yml/badge.svg)](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/build.yml)
 
 Provides Roslyn analyzers for writing unit tests with Unity Test Framework.
-Diagnoses API usage that could cause Unity Editor freezes or runtime errors before running tests.
+Before running tests, the analyzers diagnose API usage that could freeze the Unity Editor, trigger runtime errors, and suggest best practices.
+
 
 ## Required
 
