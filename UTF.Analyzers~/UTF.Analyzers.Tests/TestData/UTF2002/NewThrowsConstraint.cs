@@ -10,7 +10,8 @@ namespace UTF.Analyzers.Tests.TestData.UTF2002
         [Test]
         public void Test()
         {
-            Assert.That(async () => await FooAsync(), new ThrowsConstraint(new ExactTypeConstraint(typeof(InvalidOperationException)))); // UTF2002
+            Assert.That(async () => await FooAsync(), // UTF2002
+                new ThrowsConstraint(new ExactTypeConstraint(typeof(InvalidOperationException))));
         }
 
         private static async Task FooAsync()

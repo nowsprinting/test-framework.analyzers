@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 
@@ -47,6 +49,15 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        // ThrowsNothingConstraint may be absent from an older NUnit; the set simply omits it.
+        var throwsConstraintTypes = new[]
+            {
+                "NUnit.Framework.Constraints.ThrowsConstraint", "NUnit.Framework.Constraints.ThrowsNothingConstraint",
+            }
+            .Select(context.Compilation.GetTypeByMetadataName)
+            .Where(t => t is not null)
+            .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
+
         var that = assert.GetMembers("That").OfType<IMethodSymbol>()
             .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
         var testDelegateAssertions = new[] { "Throws", "Catch", "DoesNotThrow" }
@@ -74,7 +85,8 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
                 return;
             }
 
-            ISymbol receivingApi = method;
+            // The name is built from the symbol rather than the syntax so that a call through "using static" still reads "Throws.X".
+            var receivingApi = $"{assert.Name}.{method.Name}";
             if (isThat)
             {
                 IOperation? constraint = null;
@@ -87,8 +99,9 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
                     }
                 }
 
-                var root = ConstraintRoot(constraint);
-                if (root is null || !SymbolEqualityComparer.Default.Equals(root.ContainingType, throws))
+                var root = ThrowsRoot(constraint, operationContext.Compilation, throws, throwsConstraintTypes,
+                    depth: 0, operationContext.CancellationToken);
+                if (root is null)
                 {
                     return;
                 }
@@ -96,21 +109,31 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
                 receivingApi = root;
             }
 
-            // The name is built from the symbol rather than the syntax so that a call through "using static" still reads "Throws.X".
-            operationContext.ReportDiagnostic(Diagnostic.Create(Rule, argument.Syntax.GetLocation(),
-                $"{receivingApi.ContainingType.Name}.{receivingApi.Name}"));
+            operationContext.ReportDiagnostic(Diagnostic.Create(Rule, argument.Syntax.GetLocation(), receivingApi));
         }, OperationKind.Invocation);
     }
 
     /// <summary>
-    /// Walks a constraint expression such as Throws.TypeOf&lt;T&gt;().With.Message.EqualTo(...) back to its leftmost member.
-    /// Returns null when the expression does not start with a static member access (e.g., a constraint held in a variable).
+    /// Walks a constraint expression such as Throws.TypeOf&lt;T&gt;().With.Message.EqualTo(...) back to its leftmost member
+    /// and returns its display name ("Throws.TypeOf", "ThrowsConstraint") when that member belongs to Throws or is a
+    /// ThrowsConstraint construction, or null otherwise.
+    /// A local or field reference is followed to its initializer. Reassignments are not tracked: full data-flow
+    /// analysis is not worth its cost for test code, and an untracked Throws constraint falls through to UTF2003
+    /// rather than going unreported.
     /// </summary>
-    private static ISymbol? ConstraintRoot(IOperation? operation)
+    private static string? ThrowsRoot(IOperation? operation, Compilation compilation, INamedTypeSymbol throws,
+        ImmutableHashSet<ISymbol> throwsConstraintTypes, int depth, CancellationToken cancellationToken)
     {
+        // Fields can initialize each other in a cycle; the bound keeps the walk finite.
+        if (depth > 8)
+        {
+            return null;
+        }
+
         ISymbol? root = null;
         while (operation is not null)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             switch (operation)
             {
                 case IConversionOperation conversion:
@@ -124,12 +147,35 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
                     root = property.Property;
                     operation = property.Instance;
                     break;
+                case IObjectCreationOperation creation:
+                    return creation.Type is not null && throwsConstraintTypes.Contains(creation.Type.OriginalDefinition)
+                        ? creation.Type.Name
+                        : null;
+                case ILocalReferenceOperation local:
+                    return ThrowsRoot(Initializer(local.Local, compilation, cancellationToken), compilation, throws,
+                        throwsConstraintTypes, depth + 1, cancellationToken);
+                case IFieldReferenceOperation field:
+                    return ThrowsRoot(Initializer(field.Field, compilation, cancellationToken), compilation, throws,
+                        throwsConstraintTypes, depth + 1, cancellationToken);
                 default:
                     return null;
             }
         }
 
-        return root;
+        return root is not null && SymbolEqualityComparer.Default.Equals(root.ContainingType, throws)
+            ? $"{throws.Name}.{root.Name}"
+            : null;
+    }
+
+    private static IOperation? Initializer(ISymbol symbol, Compilation compilation, CancellationToken cancellationToken)
+    {
+        // Locals and fields share VariableDeclaratorSyntax; a symbol from metadata has no syntax reference.
+        var declarator = symbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken)
+            as VariableDeclaratorSyntax;
+        var value = declarator?.Initializer?.Value;
+        return value is null
+            ? null
+            : compilation.GetSemanticModel(value.SyntaxTree).GetOperation(value, cancellationToken);
     }
 
     /// <summary>
