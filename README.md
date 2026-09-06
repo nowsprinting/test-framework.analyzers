@@ -30,6 +30,7 @@ Rules about misuse of assertions and constraints.
 
 | Id | Title |
 |----|-------|
+| [UTF2001](Documentation~/rules/UTF2001.md) | Assert.ThrowsAsync, CatchAsync, and DoesNotThrowAsync are not supported |
 
 ### Suppressor (UTF3xxx)
 
