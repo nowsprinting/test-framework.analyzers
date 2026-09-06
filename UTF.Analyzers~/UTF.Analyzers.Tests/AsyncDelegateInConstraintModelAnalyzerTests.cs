@@ -38,6 +38,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("SyncDelegates")]
         [InlineData("TaskResultInsteadOfDelegate")]
         [InlineData("ThrowsConstraintOnAsyncLambda")]
+        [InlineData("ThrowsNothingAndExtensionChain")]
         [InlineData("AwaitThenAssertGood")]
         public async Task NotAsyncDelegateOrReportedByUTF2002_NoDiagnostic(string fixture)
         {

@@ -16,6 +16,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("ThrowsTypeOfValueTaskAsyncLambda", 12, 25, "Throws.TypeOf")]
         [InlineData("ThrowsTypeOfUniTaskLambda", 12, 25, "Throws.TypeOf")]
         [InlineData("ThrowsNothingAwaitableMethodGroup", 12, 25, "Throws.Nothing")]
+        [InlineData("ThrowsNothingAndExtensionChain", 12, 25, "Throws.Nothing")]
         [InlineData("NewThrowsConstraint", 13, 25, "ThrowsConstraint")]
         [InlineData("NewThrowsNothingConstraint", 12, 25, "ThrowsNothingConstraint")]
         [InlineData("AssertThrowsAsyncLambda", 12, 54, "Assert.Throws")]

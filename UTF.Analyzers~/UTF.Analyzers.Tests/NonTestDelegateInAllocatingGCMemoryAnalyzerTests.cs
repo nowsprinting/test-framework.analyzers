@@ -27,6 +27,7 @@ namespace UTF.Analyzers.Tests
         [Theory]
         [InlineData("GoodShapes")]
         [InlineData("AsyncLambdaOwnedByUTF2003")]
+        [InlineData("ThrowsNothingAndExtensionChain")]
         [InlineData("OtherConstraint")]
         [InlineData("ConstraintInVariable")]
         public async Task TestDelegateOrOutOfScope_NoDiagnostic(string fixture)
