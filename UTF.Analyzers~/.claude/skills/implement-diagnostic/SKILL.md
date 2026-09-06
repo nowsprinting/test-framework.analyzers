@@ -78,7 +78,7 @@ Check whether `UTF.Analyzers.Tests/TestDataVerifier.cs` exists.
    **Known limitation**: `UTF.Analyzers.sln` is meant to be opened in a Rider instance separate from the Unity project.
    If the connected Rider instance has the Unity solution open, the call fails with `Requested files are not part of the current solution`.
    In that case do not force a switch; format by hand to match the conventions of the existing files and skip this item.
-5. Add the row to `../Documentation~/rules/index.md` if it is not there yet (normally already added by the `design-diagnostic` skill).
+5. Add the row to the "Diagnostics" table in `../README.md` if it is not there yet (normally already added by the `design-diagnostic` skill).
 6. Reflect any decisions from Step 0 that are not yet in the spec file (typically under "Notes" as known limitations).
 7. Commit the remaining changes.
 

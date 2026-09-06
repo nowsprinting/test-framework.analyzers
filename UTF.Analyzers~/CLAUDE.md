@@ -42,8 +42,8 @@ Diagnostic IDs use the `UTF` prefix with the category encoded in the first digit
 When adding or changing a diagnostic:
 
 1. Add the rule to `UTF.Analyzers/AnalyzerReleases.Unshipped.md` (required by RS2007/RS2008 release tracking)
-2. Add a row to the matching category table in `../Documentation~/rules/index.md`
-3. Write a documentation page for the rule under `../Documentation~/rules/` and link it from the table in `../Documentation~/rules/index.md`
+2. Write a documentation page for the rule under `../Documentation~/rules/`
+3. Add a row linking to that page in the matching category table under "Diagnostics" in `../README.md`
 4. Add xUnit tests in `UTF.Analyzers.Tests/`
 
 ## Build

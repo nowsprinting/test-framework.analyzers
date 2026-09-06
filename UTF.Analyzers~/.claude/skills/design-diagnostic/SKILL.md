@@ -13,7 +13,7 @@ metadata:
 
 ### 1. Assign a diagnostic ID
 
-`UTF` + four digits. The first digit is fixed per category. Refer to the diagnostics list in ../Documentation~/rules/index.md for the existing categories and IDs, and confirm with the user before using a number range for a new category.
+`UTF` + four digits. The first digit is fixed per category. Refer to the diagnostics tables under "Diagnostics" in ../README.md for the existing categories and IDs, and confirm with the user before using a number range for a new category.
 
 ### 2. Verify against primary sources
 
@@ -48,6 +48,6 @@ Create `../Documentation~/rules/<DIAGNOSTIC_ID>.md` based on `assets/TEMPLATE.md
 Anything that must be stopped before the test runs is an **Error**. Code that leads to a runtime error or a freeze is an Error,
 e.g., "a test that waits for a state transition has no `Timeout` attribute". At Warning or below, a test that loops forever would be run without a timeout.
 
-### 4. Update index.md
+### 4. Update README.md
 
-Add a row to the table of the corresponding category in ../Documentation~/rules/index.md.
+Add a row linking to the new file to the table of the corresponding category under "Diagnostics" in ../README.md.

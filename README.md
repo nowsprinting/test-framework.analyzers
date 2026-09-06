@@ -5,15 +5,44 @@ Roslyn analyzers for writing unit tests with Unity Test Framework.
 
 ## Diagnostics
 
-| ID      | Category   | Description                                                                 |
-|---------|------------|-----------------------------------------------------------------------------|
-| UTF1xxx | Structure  | Test method signatures and attribute combinations                           |
-| UTF2xxx | Assertion  | Misuse of assertions and constraints                                        |
-| UTF3xxx | Suppressor | Suppressions of other analyzers' diagnostics that do not apply to UTF       |
-| UTF4xxx | Style      | Code that works but is not recommended                                      |
-| UTF5xxx | Extensions | Rules for authors of custom attributes, constraints, and comparers          |
+### Structure (UTF1xxx)
 
-See details: [Diagnostics Index](Documentation~/index.md)
+Rules about test method signatures and attribute combinations.
+
+| Id | Title |
+|----|-------|
+| [UTF1001](Documentation~/rules/UTF1001.md) | TestCase and TestCaseSource attributes are not supported on coroutine-style test methods |
+| [UTF1002](Documentation~/rules/UTF1002.md) | Task<TResult> is not supported as a test method return type |
+| [UTF1003](Documentation~/rules/UTF1003.md) | Pairwise, Sequential, and Combinatorial attributes are not supported on coroutine-style test methods |
+| [UTF1004](Documentation~/rules/UTF1004.md) | OneTimeSetUp and OneTimeTearDown attributes are not supported on async methods |
+
+### Assertion (UTF2xxx)
+
+Rules about misuse of assertions and constraints.
+
+| Id | Title |
+|----|-------|
+
+### Suppressor (UTF3xxx)
+
+Suppressions of diagnostics reported by other analyzers that do not apply to Unity Test Framework.
+
+| Id | Title |
+|----|-------|
+
+### Style (UTF4xxx)
+
+Rules about code that works but is not recommended.
+
+| Id | Title |
+|----|-------|
+
+### Extensions (UTF5xxx)
+
+Rules for authors of custom attributes, constraints, and comparers.
+
+| Id | Title |
+|----|-------|
 
 
 ## Installation
