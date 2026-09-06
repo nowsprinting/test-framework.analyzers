@@ -3,8 +3,8 @@
 [![Meta file check](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/metacheck.yml/badge.svg)](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/metacheck.yml)
 [![Build](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/build.yml/badge.svg)](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/build.yml)
 
-Provides Roslyn analyzers for writing unit tests with Unity Test Framework.
-Before running tests, the analyzers diagnose API usage that could freeze the Unity Editor, trigger runtime errors, and suggest best practices.
+This package provides Roslyn analyzers that help you write unit tests using the [Unity Test Framework](https://docs.unity3d.com/Packages/com.unity.test-framework@1.4/manual/index.html).
+It diagnoses API usage that could cause Unity Editor freezes or runtime errors before running tests and suggests best practices.
 
 
 ## Required
@@ -13,6 +13,18 @@ Before running tests, the analyzers diagnose API usage that could freeze the Uni
 
 
 ## Diagnostics
+
+### Baseline version
+
+The analyzers diagnose against the Unity Test Framework package v1.4.6 as the baseline; they do not diagnose bugs that exist only in earlier versions.
+UTF v1.4.6 is the last version you can update independently as a UPM package.
+
+Diagnostics remain even if the bug is fixed in UTF v1.5.0 or later.
+If the bug is fixed in the version you are using, suppress the diagnostic in your project via `.globalconfig` or `.editorconfig`:
+
+```ini
+dotnet_diagnostic.UTFxxxx.severity = none
+```
 
 ### Structure (UTF1xxx)
 
@@ -74,16 +86,16 @@ This package is published to both UPM and NuGet. Choose one of the following.
 3. Open the Package Manager window (**Window > Package Manager**) and select **My Registries** tab
 4. Select **UTF.Analyzers** and click the **Install** button
 
-> [!NOTE]\
+> [!TIP]\
 > You do not need to add a reference to the test assembly definition file (asmdef).
 > Because it's configured via an assembly definition reference file (asmref) to apply across all test assemblies.
 
-> [!NOTE]\
-> Installing this package will also install the following packages:
+> [!TIP]\
+> Installing the UPM package will also install the following packages:
 > - Unity Test Framework v1.4.6
 > - NUnit.Analyzers v3.9.0
 >
-> If you do not wish to use these, please use the NuGet package instead.
+> These are not required. If you do not need them, install the NuGet package instead.
 
 ### Install NuGet package via [NuGetForUnity](https://github.com/GlitchEnzo/NuGetForUnity)
 
