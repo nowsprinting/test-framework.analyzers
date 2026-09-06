@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Operations;
 
 namespace UTF.Analyzers;
 
@@ -30,5 +32,37 @@ public sealed class DelayedConstraintAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
+        context.RegisterCompilationStartAction(OnCompilationStart);
+    }
+
+    private static void OnCompilationStart(CompilationStartAnalysisContext context)
+    {
+        var constraint = context.Compilation.GetTypeByMetadataName("NUnit.Framework.Constraints.Constraint");
+        var delayedConstraint = context.Compilation.GetTypeByMetadataName("NUnit.Framework.Constraints.DelayedConstraint");
+        if (constraint is null || delayedConstraint is null)
+        {
+            return;
+        }
+
+        // After is non-virtual on Constraint, so a call on any subclass resolves to one of these symbols; the
+        // overloads are collected once rather than matched by name per invocation, following the repository convention.
+        var afterMethods = constraint.GetMembers("After").OfType<IMethodSymbol>()
+            .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
+
+        context.RegisterOperationAction(operationContext =>
+        {
+            operationContext.CancellationToken.ThrowIfCancellationRequested();
+            var operation = operationContext.Operation;
+            var reported = operation switch
+            {
+                IInvocationOperation invocation => afterMethods.Contains(invocation.TargetMethod.OriginalDefinition),
+                IObjectCreationOperation creation => SymbolEqualityComparer.Default.Equals(creation.Type?.OriginalDefinition, delayedConstraint),
+                _ => false
+            };
+            if (reported)
+            {
+                operationContext.ReportDiagnostic(Diagnostic.Create(Rule, operation.Syntax.GetLocation()));
+            }
+        }, OperationKind.Invocation, OperationKind.ObjectCreation);
     }
 }
