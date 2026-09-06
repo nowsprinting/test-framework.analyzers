@@ -69,6 +69,8 @@ public sealed class CommandWrapperOnAsyncTestAnalyzer : DiagnosticAnalyzer
                 return;
             }
 
+            // Non-test methods such as [SetUp] are not reported: Unity Test Framework reads wrapper attributes only from
+            // the test method (TestCommandBuilder), so a wrapper on any other method is inert rather than harmful.
             var attributes = method.GetAttributes();
             if (!attributes.Any(a => a.AttributeClass is { } c
                                      && (c.AllInterfaces.Contains(testBuilder, SymbolEqualityComparer.Default)
