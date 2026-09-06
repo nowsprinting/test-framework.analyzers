@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Operations;
 
 namespace UTF.Analyzers;
 
@@ -29,5 +31,39 @@ public sealed class AsyncExceptionAssertionAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
+        context.RegisterCompilationStartAction(OnCompilationStart);
+    }
+
+    private static void OnCompilationStart(CompilationStartAnalysisContext context)
+    {
+        var assert = context.Compilation.GetTypeByMetadataName("NUnit.Framework.Assert");
+        if (assert is null)
+        {
+            return;
+        }
+
+        // Every overload (generic, Type, IResolveConstraint) is collected once from the type rather than matching
+        // TargetMethod.Name per invocation, so that a user-defined ThrowsAsync on another class is never confused with NUnit's.
+        var reported = new[] { "ThrowsAsync", "CatchAsync", "DoesNotThrowAsync" }
+            .SelectMany(name => assert.GetMembers(name).OfType<IMethodSymbol>())
+            .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
+        if (reported.IsEmpty)
+        {
+            return;
+        }
+
+        context.RegisterOperationAction(operationContext =>
+        {
+            operationContext.CancellationToken.ThrowIfCancellationRequested();
+            var method = ((IInvocationOperation)operationContext.Operation).TargetMethod.OriginalDefinition;
+            if (!reported.Contains(method))
+            {
+                return;
+            }
+
+            // The name is built from the symbol rather than the syntax so that a call through "using static" still reads "Assert.X".
+            var location = operationContext.Operation.Syntax.GetLocation();
+            operationContext.ReportDiagnostic(Diagnostic.Create(Rule, location, $"{method.ContainingType.Name}.{method.Name}"));
+        }, OperationKind.Invocation);
     }
 }
