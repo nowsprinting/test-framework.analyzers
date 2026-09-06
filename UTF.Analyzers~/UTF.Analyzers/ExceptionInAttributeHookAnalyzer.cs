@@ -26,7 +26,8 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description:
         "Detects an exception that can escape from an implementation of IApplyToTest.ApplyToTest, IApplyToContext.ApplyToContext, or ICommandWrapper.Wrap. Unity Test Framework invokes these methods outside its exception handling: an exception from ApplyToTest replaces the whole fixture with a single not-runnable entry that has no tests, and an exception from ApplyToContext on a test method or from Wrap aborts the entire test run.",
-        helpLinkUri: "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF5001.md");
+        helpLinkUri:
+        "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF5001.md");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
@@ -64,6 +65,11 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
         context.RegisterSymbolAction(symbolContext =>
         {
             var type = (INamedTypeSymbol)symbolContext.Symbol;
+            if (type.AllInterfaces.IsEmpty)
+            {
+                return;
+            }
+
             foreach (var hook in hooks)
             {
                 symbolContext.CancellationToken.ThrowIfCancellationRequested();
@@ -72,7 +78,7 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
                     continue;
                 }
 
-                implementation = MostDerivedOverride(type, implementation);
+                implementation = OverrideIn(type, implementation);
                 if (!analyzed.TryAdd(implementation, 0))
                 {
                     continue;
@@ -87,23 +93,21 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
         }, SymbolKind.NamedType);
     }
 
-    // FindImplementationForInterfaceMember returns the method in the type that declares the interface, even when
-    // a derived type overrides it, so the override that actually runs for the type is looked up by hand.
-    private static IMethodSymbol MostDerivedOverride(INamedTypeSymbol type, IMethodSymbol implementation)
+    // FindImplementationForInterfaceMember returns the method in the type that declares the interface even when
+    // a derived type overrides it. Only the visited type's own override is looked up: an override in an intermediate
+    // base class is found when that class itself is visited.
+    private static IMethodSymbol OverrideIn(INamedTypeSymbol type, IMethodSymbol implementation)
     {
         implementation = implementation.OriginalDefinition;
-        for (var current = type;
-             current is not null && !SymbolEqualityComparer.Default.Equals(current, implementation.ContainingType);
-             current = current.BaseType)
+        foreach (var candidate in type.GetMembers(implementation.Name).OfType<IMethodSymbol>())
         {
-            foreach (var candidate in current.GetMembers(implementation.Name).OfType<IMethodSymbol>())
+            for (var overridden = candidate.OverriddenMethod;
+                 overridden is not null;
+                 overridden = overridden.OverriddenMethod)
             {
-                for (var overridden = candidate.OverriddenMethod; overridden is not null; overridden = overridden.OverriddenMethod)
+                if (SymbolEqualityComparer.Default.Equals(overridden.OriginalDefinition, implementation))
                 {
-                    if (SymbolEqualityComparer.Default.Equals(overridden.OriginalDefinition, implementation))
-                    {
-                        return candidate.OriginalDefinition;
-                    }
+                    return candidate.OriginalDefinition;
                 }
             }
         }
@@ -120,9 +124,6 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
         private readonly Compilation _compilation;
         private readonly INamedTypeSymbol _exception;
 
-        private readonly ConcurrentDictionary<IMethodSymbol, ImmutableArray<ITypeSymbol>> _escapesByCallee =
-            new(SymbolEqualityComparer.Default);
-
         public EscapeAnalysis(Compilation compilation, INamedTypeSymbol exception)
         {
             _compilation = compilation;
@@ -132,29 +133,23 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
         public IEnumerable<IOperation> EscapingSites(IMethodSymbol method, CancellationToken cancellationToken)
         {
             var inProgress = new HashSet<IMethodSymbol>(SymbolEqualityComparer.Default) { method.OriginalDefinition };
-            var walker = Walk(method, inProgress, cancellationToken);
-            return walker is null ? Enumerable.Empty<IOperation>() : walker.Escapes.Select(e => e.Site).Distinct();
+            return Walk(method, inProgress, cancellationToken).Escapes.Select(e => e.Site).Distinct();
         }
 
-        private Walker? Walk(IMethodSymbol method, HashSet<IMethodSymbol> inProgress, CancellationToken cancellationToken)
+        private Walker Walk(IMethodSymbol method, HashSet<IMethodSymbol> inProgress,
+            CancellationToken cancellationToken)
         {
+            var walker = new Walker(this, inProgress, cancellationToken);
             // A throw inside an async method is captured by the returned task and does not escape at the call site.
             if (method.IsAsync)
             {
-                return null;
+                return walker;
             }
 
-            Walker? walker = null;
-            foreach (var reference in method.DeclaringSyntaxReferences)
+            var syntax = method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken);
+            if (syntax is not null
+                && _compilation.GetSemanticModel(syntax.SyntaxTree).GetOperation(syntax, cancellationToken) is { } body)
             {
-                var syntax = reference.GetSyntax(cancellationToken);
-                var body = _compilation.GetSemanticModel(syntax.SyntaxTree).GetOperation(syntax, cancellationToken);
-                if (body is null)
-                {
-                    continue;
-                }
-
-                walker ??= new Walker(this, inProgress, cancellationToken);
                 foreach (var child in body.ChildOperations)
                 {
                     walker.Visit(child, null);
@@ -164,38 +159,24 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
             return walker;
         }
 
+        // Results are not cached across call sites: a cycle cut by the recursion guard would leave a callee's result
+        // incomplete, and the hook methods this analysis starts from are few and small.
         private ImmutableArray<ITypeSymbol> EscapesFrom(IMethodSymbol callee, HashSet<IMethodSymbol> inProgress,
-            CancellationToken cancellationToken, out bool cycleCut)
+            CancellationToken cancellationToken)
         {
             callee = callee.OriginalDefinition;
-            cycleCut = false;
-            if (_escapesByCallee.TryGetValue(callee, out var cached))
-            {
-                return cached;
-            }
-
             if (!inProgress.Add(callee))
             {
-                cycleCut = true;
                 return ImmutableArray<ITypeSymbol>.Empty;
             }
 
             var walker = Walk(callee, inProgress, cancellationToken);
             inProgress.Remove(callee);
             // An iterator method's body runs only when enumerated, so nothing escapes at the call site.
-            var escapes = walker is null || walker.IsIterator
+            return walker.IsIterator
                 ? ImmutableArray<ITypeSymbol>.Empty
                 : walker.Escapes.Select(e => e.Type).Distinct<ITypeSymbol>(SymbolEqualityComparer.Default)
                     .ToImmutableArray();
-            // A result computed while a recursive call was cut short is incomplete for the methods on that cycle,
-            // so it is recomputed on the next visit instead of being cached.
-            cycleCut = walker?.CycleCut ?? false;
-            if (!cycleCut)
-            {
-                _escapesByCallee.TryAdd(callee, escapes);
-            }
-
-            return escapes;
         }
 
         private sealed class Walker
@@ -206,9 +187,9 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
 
             public List<(IOperation Site, ITypeSymbol Type)> Escapes { get; } = new();
             public bool IsIterator { get; private set; }
-            public bool CycleCut { get; private set; }
 
-            public Walker(EscapeAnalysis analysis, HashSet<IMethodSymbol> inProgress, CancellationToken cancellationToken)
+            public Walker(EscapeAnalysis analysis, HashSet<IMethodSymbol> inProgress,
+                CancellationToken cancellationToken)
             {
                 _analysis = analysis;
                 _inProgress = inProgress;
@@ -226,27 +207,27 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
                     case IAnonymousFunctionOperation:
                     case ILocalFunctionOperation:
                         return;
+                    case ITryOperation tryOperation:
+                        VisitTry(tryOperation, caughtType);
+                        return;
                     case IReturnOperation { Kind: OperationKind.YieldReturn or OperationKind.YieldBreak }:
                         IsIterator = true;
                         break;
                     case IThrowOperation throwOperation:
-                        VisitChildren(operation, caughtType);
                         Escapes.Add((operation, ThrownType(throwOperation) ?? caughtType ?? _analysis._exception));
-                        return;
-                    case ITryOperation tryOperation:
-                        VisitTry(tryOperation, caughtType);
-                        return;
+                        break;
                     case IInvocationOperation invocation:
-                        VisitChildren(operation, caughtType);
                         AddCallee(operation, invocation.TargetMethod);
-                        return;
+                        break;
                     case IObjectCreationOperation { Constructor: { } constructor }:
-                        VisitChildren(operation, caughtType);
                         AddCallee(operation, constructor);
-                        return;
+                        break;
                 }
 
-                VisitChildren(operation, caughtType);
+                foreach (var child in operation.ChildOperations)
+                {
+                    Visit(child, caughtType);
+                }
             }
 
             // The thrown expression is wrapped in an implicit conversion to System.Exception, whose type would make
@@ -262,20 +243,11 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
                 return exception?.Type;
             }
 
-            private void VisitChildren(IOperation operation, ITypeSymbol? caughtType)
-            {
-                foreach (var child in operation.ChildOperations)
-                {
-                    Visit(child, caughtType);
-                }
-            }
-
             private void VisitTry(ITryOperation tryOperation, ITypeSymbol? caughtType)
             {
                 var body = new Walker(_analysis, _inProgress, _cancellationToken);
                 body.Visit(tryOperation.Body, caughtType);
                 IsIterator |= body.IsIterator;
-                CycleCut |= body.CycleCut;
                 Escapes.AddRange(body.Escapes.Where(e => !tryOperation.Catches.Any(c => Handles(c, e.Type))));
 
                 foreach (var catchClause in tryOperation.Catches)
@@ -291,9 +263,10 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
 
             private void AddCallee(IOperation site, IMethodSymbol callee)
             {
-                var escapes = _analysis.EscapesFrom(callee, _inProgress, _cancellationToken, out var cycleCut);
-                CycleCut |= cycleCut;
-                Escapes.AddRange(escapes.Select(type => (site, type)));
+                foreach (var type in _analysis.EscapesFrom(callee, _inProgress, _cancellationToken))
+                {
+                    Escapes.Add((site, type));
+                }
             }
 
             private bool Handles(ICatchClauseOperation catchClause, ITypeSymbol thrown)
