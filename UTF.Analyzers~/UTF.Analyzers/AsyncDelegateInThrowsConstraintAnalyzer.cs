@@ -19,7 +19,7 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
         title:
         "Async delegates are not supported as the actual value of Throws constraints, Assert.Throws, Assert.Catch, and Assert.DoesNotThrow",
         messageFormat:
-        "Async delegates are not supported as the actual value of '{0}'. Test the exception with try/catch in an 'async Task' test method instead.",
+        "Async delegates are not supported as the actual value of '{0}'. Test the exception with try/catch in an async test method instead.",
         category: "Assertion",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
