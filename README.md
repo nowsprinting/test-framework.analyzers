@@ -56,6 +56,7 @@ Suppressions of diagnostics reported by other analyzers that do not apply to Uni
 
 | Id | Title |
 |----|-------|
+| [UTF3001](Documentation~/rules/UTF3001.md) | Suppress NUnit2045 (Use Assert.Multiple) when Assert.Multiple is not available |
 
 ### Style (UTF4xxx)
 
