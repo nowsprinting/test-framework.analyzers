@@ -80,12 +80,12 @@ This package is published to both UPM and NuGet. Choose one of the following.
 >
 > If you do not wish to use these, please use the NuGet package instead.
 
-### Install NuGet package via [NuGetForUnity]([NuGetForUnity](https://github.com/GlitchEnzo/NuGetForUnity))
+### Install NuGet package via [NuGetForUnity](https://github.com/GlitchEnzo/NuGetForUnity)
 
 1. Open the NuGetForUnity window via **NuGet > Manage NuGet Packages**
 2. Search "UTF.Analyzers" and click **Install**
 
-### Install NuGet package via [UnityNuGet]([UnityNuGet](https://github.com/bdovaz/UnityNuGet)) (hosted on OpenUPM)
+### Install NuGet package via [UnityNuGet](https://github.com/bdovaz/UnityNuGet) (hosted on OpenUPM)
 
 1. Install the package:
 
@@ -122,8 +122,19 @@ Clone this repository as a submodule under the Packages/ directory in your proje
 git submodule add git@github.com:nowsprinting/test-framework.analyzers.git Packages/com.nowsprinting.test-framework.analyzers
 ```
 
-### Run tests
+### Run Tests
 
 ```bash
-cd Packages/com.nowsprinting.test-framework.analyzers/UTF.Analyzers~ && dotnet test
+cd Packages/com.nowsprinting.test-framework.analyzers/UTF.Analyzers~
+dotnet test
 ```
+
+### Build
+
+```bash
+cd Packages/com.nowsprinting.test-framework.analyzers/UTF.Analyzers~
+dotnet build -c Release UTF.Analyzers
+```
+
+After the Release build, `UTF.Analyzers.dll` is automatically copied to `UTF.Analyzers/`.
+Please commit the copied DLL; it will be distributed as part of the UPM package.
