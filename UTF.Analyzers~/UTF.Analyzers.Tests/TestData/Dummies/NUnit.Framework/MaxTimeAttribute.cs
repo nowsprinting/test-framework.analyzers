@@ -13,9 +13,11 @@ namespace NUnit.Framework
         {
         }
 
+        // Returns the argument instead of throwing: UTF5001 follows the body of every ICommandWrapper.Wrap in the compilation,
+        // and a throwing dummy would be reported in every fixture.
         public TestCommand Wrap(TestCommand command)
         {
-            throw new NotImplementedException();
+            return command;
         }
     }
 }
