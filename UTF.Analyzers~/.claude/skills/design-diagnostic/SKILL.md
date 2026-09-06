@@ -26,6 +26,8 @@ Create `../Documentation~/rules/<DIAGNOSTIC_ID>.md` based on `assets/TEMPLATE.md
 - Write everything in English
 - CodeFix is always False (project-wide policy: no code fixes are provided)
 - Follow the terminology below
+- Link to the Unity Manual without a version number: `https://docs.unity3d.com/Manual/...`, not `https://docs.unity3d.com/6000.4/Documentation/Manual/...`
+- Do not mention the host Unity project, e.g. "NUnit.Analyzers 3.9.0 (the version shipped by the host project)". The package is distributed independently; state only the package and version you verified against
 
 #### Terminology
 
