@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -39,57 +38,21 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        var assert = context.Compilation.GetTypeByMetadataName("NUnit.Framework.Assert");
-        var throws = context.Compilation.GetTypeByMetadataName("NUnit.Framework.Throws");
-        var resolveConstraint =
-            context.Compilation.GetTypeByMetadataName("NUnit.Framework.Constraints.IResolveConstraint");
-        if (assert is null || throws is null || resolveConstraint is null)
+        var analysis = AsyncDelegateAnalysis.TryCreate(context.Compilation);
+        if (analysis is null)
         {
             return;
         }
-
-        var throwsConstraintTypes = AsyncDelegateAnalysis.ThrowsConstraintTypes(context.Compilation);
-        var that = assert.GetMembers("That").OfType<IMethodSymbol>()
-            .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
-        var testDelegateAssertions = new[] { "Throws", "Catch", "DoesNotThrow" }
-            .SelectMany(name => assert.GetMembers(name).OfType<IMethodSymbol>())
-            .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
 
         context.RegisterOperationAction(operationContext =>
         {
             operationContext.CancellationToken.ThrowIfCancellationRequested();
             var invocation = (IInvocationOperation)operationContext.Operation;
-            var method = invocation.TargetMethod.OriginalDefinition;
-            var isThat = that.Contains(method);
-            if (!isThat && !testDelegateAssertions.Contains(method))
+            if (analysis.Classify(invocation, out var argument, out var receivingApi) ==
+                AsyncDelegateAnalysis.Owner.ThrowsConstraint)
             {
-                return;
+                operationContext.ReportDiagnostic(Diagnostic.Create(Rule, argument.Syntax.GetLocation(), receivingApi));
             }
-
-            // The delegate is checked before the constraint because it is the cheaper and more selective filter:
-            // most Assert.That calls take a plain value, and most Assert.Throws calls take a synchronous lambda.
-            var argument = AsyncDelegateAnalysis.DelegateArgument(invocation);
-            if (argument is null || !AsyncDelegateAnalysis.IsAsyncDelegate(argument))
-            {
-                return;
-            }
-
-            // The name is built from the symbol rather than the syntax so that a call through "using static" still reads "Throws.X".
-            var receivingApi = $"{assert.Name}.{method.Name}";
-            if (isThat)
-            {
-                var root = AsyncDelegateAnalysis.ThrowsRoot(
-                    AsyncDelegateAnalysis.ConstraintArgument(invocation, resolveConstraint), throws,
-                    throwsConstraintTypes);
-                if (root is null)
-                {
-                    return;
-                }
-
-                receivingApi = root;
-            }
-
-            operationContext.ReportDiagnostic(Diagnostic.Create(Rule, argument.Syntax.GetLocation(), receivingApi));
         }, OperationKind.Invocation);
     }
 }

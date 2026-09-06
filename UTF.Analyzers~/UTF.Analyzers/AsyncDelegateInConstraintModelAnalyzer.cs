@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -38,50 +37,21 @@ public sealed class AsyncDelegateInConstraintModelAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        var assert = context.Compilation.GetTypeByMetadataName("NUnit.Framework.Assert");
-        var assume = context.Compilation.GetTypeByMetadataName("NUnit.Framework.Assume");
-        var throws = context.Compilation.GetTypeByMetadataName("NUnit.Framework.Throws");
-        var resolveConstraint =
-            context.Compilation.GetTypeByMetadataName("NUnit.Framework.Constraints.IResolveConstraint");
-        if (assert is null || throws is null || resolveConstraint is null)
+        var analysis = AsyncDelegateAnalysis.TryCreate(context.Compilation);
+        if (analysis is null)
         {
             return;
         }
-
-        var throwsConstraintTypes = AsyncDelegateAnalysis.ThrowsConstraintTypes(context.Compilation);
-        var assertThat = assert.GetMembers("That").OfType<IMethodSymbol>()
-            .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
-        // Assume is looked up separately from Assert so that a compilation without Assume still analyzes Assert.That.
-        var assumeThat = (assume?.GetMembers("That").OfType<IMethodSymbol>() ?? Enumerable.Empty<IMethodSymbol>())
-            .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
 
         context.RegisterOperationAction(operationContext =>
         {
             operationContext.CancellationToken.ThrowIfCancellationRequested();
             var invocation = (IInvocationOperation)operationContext.Operation;
-            var method = invocation.TargetMethod.OriginalDefinition;
-            var isAssert = assertThat.Contains(method);
-            if (!isAssert && !assumeThat.Contains(method))
+            if (analysis.Classify(invocation, out var argument, out var receivingApi) ==
+                AsyncDelegateAnalysis.Owner.ConstraintModel)
             {
-                return;
+                operationContext.ReportDiagnostic(Diagnostic.Create(Rule, argument.Syntax.GetLocation(), receivingApi));
             }
-
-            var argument = AsyncDelegateAnalysis.DelegateArgument(invocation);
-            if (argument is null || !AsyncDelegateAnalysis.IsAsyncDelegate(argument))
-            {
-                return;
-            }
-
-            // Only Assert.That defers to UTF2002; Assume.That is reported with every constraint, Throws included.
-            if (isAssert && AsyncDelegateAnalysis.ThrowsRoot(
-                    AsyncDelegateAnalysis.ConstraintArgument(invocation, resolveConstraint), throws,
-                    throwsConstraintTypes) is not null)
-            {
-                return;
-            }
-
-            operationContext.ReportDiagnostic(Diagnostic.Create(Rule, argument.Syntax.GetLocation(),
-                $"{method.ContainingType.Name}.{method.Name}"));
         }, OperationKind.Invocation);
     }
 }
