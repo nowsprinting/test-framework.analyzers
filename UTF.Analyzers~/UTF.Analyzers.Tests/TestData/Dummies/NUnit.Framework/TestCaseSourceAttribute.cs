@@ -1,4 +1,5 @@
 // Dummy of NUnit.Framework.TestCaseSourceAttribute. Declaration-only; see test-data-conventions.md.
+
 using System;
 using NUnit.Framework.Interfaces;
 

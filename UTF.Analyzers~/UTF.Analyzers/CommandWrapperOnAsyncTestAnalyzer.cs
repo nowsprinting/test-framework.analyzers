@@ -40,29 +40,23 @@ public sealed class CommandWrapperOnAsyncTestAnalyzer : DiagnosticAnalyzer
         var task = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
         // Test methods are recognized through the builder interfaces rather than a list of attribute names,
         // so user-defined test builders are covered the same way Unity Test Framework discovers them.
-        var testBuilders = new[]
-            {
-                compilation.GetTypeByMetadataName("NUnit.Framework.Interfaces.ITestBuilder"),
-                compilation.GetTypeByMetadataName("NUnit.Framework.Interfaces.ISimpleTestBuilder"),
-            }
-            .Where(t => t is not null)
-            .ToImmutableArray();
-        if (commandWrapper is null || task is null || testBuilders.IsEmpty)
+        var testBuilder = compilation.GetTypeByMetadataName("NUnit.Framework.Interfaces.ITestBuilder");
+        var simpleTestBuilder = compilation.GetTypeByMetadataName("NUnit.Framework.Interfaces.ISimpleTestBuilder");
+        if (commandWrapper is null || task is null || testBuilder is null || simpleTestBuilder is null)
         {
             return;
         }
 
         // Unity Test Framework substitutes the commands produced by these attributes by exact type name,
         // so the exemption is by exact type as well; a derived attribute is reported.
+        // A null entry (type not referenced) never equals an attribute class, so no filtering is needed.
         var exempt = new[]
-            {
-                compilation.GetTypeByMetadataName("NUnit.Framework.RepeatAttribute"),
-                compilation.GetTypeByMetadataName("NUnit.Framework.RetryAttribute"),
-                compilation.GetTypeByMetadataName("NUnit.Framework.MaxTimeAttribute"),
-                compilation.GetTypeByMetadataName("UnityEngine.TestTools.ParametrizedIgnoreAttribute"),
-            }
-            .Where(t => t is not null)
-            .ToImmutableArray();
+        {
+            compilation.GetTypeByMetadataName("NUnit.Framework.RepeatAttribute"),
+            compilation.GetTypeByMetadataName("NUnit.Framework.RetryAttribute"),
+            compilation.GetTypeByMetadataName("NUnit.Framework.MaxTimeAttribute"),
+            compilation.GetTypeByMetadataName("UnityEngine.TestTools.ParametrizedIgnoreAttribute"),
+        };
         var enumerator = compilation.GetSpecialType(SpecialType.System_Collections_IEnumerator);
 
         context.RegisterSymbolAction(symbolContext =>
@@ -76,7 +70,10 @@ public sealed class CommandWrapperOnAsyncTestAnalyzer : DiagnosticAnalyzer
             }
 
             var attributes = method.GetAttributes();
-            if (!attributes.Any(a => Implements(a.AttributeClass, testBuilders)))
+            if (!attributes.Any(a => a.AttributeClass is { } c
+                                     && (c.AllInterfaces.Contains(testBuilder, SymbolEqualityComparer.Default)
+                                         || c.AllInterfaces.Contains(simpleTestBuilder,
+                                             SymbolEqualityComparer.Default))))
             {
                 return;
             }
@@ -86,22 +83,17 @@ public sealed class CommandWrapperOnAsyncTestAnalyzer : DiagnosticAnalyzer
                 var attributeClass = attribute.AttributeClass;
                 if (attributeClass is null
                     || !attributeClass.AllInterfaces.Contains(commandWrapper, SymbolEqualityComparer.Default)
-                    || exempt.Contains(attributeClass.OriginalDefinition, SymbolEqualityComparer.Default))
+                    || exempt.Contains(attributeClass, SymbolEqualityComparer.Default))
                 {
                     continue;
                 }
 
                 // Reported at the attribute rather than the method name so that each offending attribute is highlighted.
-                var location = attribute.ApplicationSyntaxReference?.GetSyntax(symbolContext.CancellationToken).GetLocation()
+                var location = attribute.ApplicationSyntaxReference?.GetSyntax(symbolContext.CancellationToken)
+                                   .GetLocation()
                                ?? method.Locations[0];
                 symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location, attributeClass.Name));
             }
         }, SymbolKind.Method);
-    }
-
-    private static bool Implements(INamedTypeSymbol? type, ImmutableArray<INamedTypeSymbol?> interfaces)
-    {
-        return type is not null
-               && type.AllInterfaces.Any(i => interfaces.Contains(i.OriginalDefinition, SymbolEqualityComparer.Default));
     }
 }

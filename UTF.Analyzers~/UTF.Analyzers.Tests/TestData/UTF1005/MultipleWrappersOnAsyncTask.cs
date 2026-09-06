@@ -8,7 +8,7 @@ namespace UTF.Analyzers.Tests.TestData.UTF1005
     public class MultipleWrappersOnAsyncTask
     {
         [Test]
-        [MultipleWrappersOnAsyncTaskFirst] // UTF1005
+        [MultipleWrappersOnAsyncTaskFirst]  // UTF1005
         [MultipleWrappersOnAsyncTaskSecond] // UTF1005
         public async Task MyAsyncTest()
         {
@@ -23,10 +23,12 @@ namespace UTF.Analyzers.Tests.TestData.UTF1005
             return command;
         }
     }
+
     public class MultipleWrappersOnAsyncTaskSecondAttribute : NUnitAttribute, IWrapSetUpTearDown
     {
         public TestCommand Wrap(TestCommand command)
         {
             return command;
         }
-    }}
+    }
+}

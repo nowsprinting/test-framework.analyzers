@@ -19,4 +19,5 @@ namespace UTF.Analyzers.Tests.TestData.UTF1005
         {
             return command;
         }
-    }}
+    }
+}
