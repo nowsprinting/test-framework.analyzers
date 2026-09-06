@@ -20,7 +20,7 @@ Rules about test method signatures and attribute combinations.
 | Id | Title |
 |----|-------|
 | [UTF1001](Documentation~/rules/UTF1001.md) | TestCase and TestCaseSource attributes are not supported on coroutine-style test methods |
-| [UTF1002](Documentation~/rules/UTF1002.md) | Task<TResult> is not supported as a test method return type |
+| [UTF1002](Documentation~/rules/UTF1002.md) | Task&lt;TResult&gt; is not supported as a test method return type |
 | [UTF1003](Documentation~/rules/UTF1003.md) | Pairwise, Sequential, and Combinatorial attributes are not supported on coroutine-style test methods |
 | [UTF1004](Documentation~/rules/UTF1004.md) | OneTimeSetUp and OneTimeTearDown attributes are not supported on async methods |
 
