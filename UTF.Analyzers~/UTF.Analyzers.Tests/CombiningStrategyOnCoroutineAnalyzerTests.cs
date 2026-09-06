@@ -21,6 +21,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("SequentialOnVoid")]
         [InlineData("UnityTestWithValuesOnCoroutine")]
         [InlineData("PairwiseOnGenericEnumerator")]
+        [InlineData("PairwiseOnEnumerable")]
         public async Task NotCoroutineOrNoCombiningStrategyAttribute_NoDiagnostic(string fixture)
         {
             await Verifier.VerifyAsync($"UTF1003/{fixture}.cs");

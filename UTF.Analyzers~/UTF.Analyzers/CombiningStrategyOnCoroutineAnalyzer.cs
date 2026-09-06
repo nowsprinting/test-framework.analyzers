@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -29,52 +29,11 @@ public sealed class CombiningStrategyOnCoroutineAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
-        context.RegisterCompilationStartAction(OnCompilationStart);
-    }
-
-    private static void OnCompilationStart(CompilationStartAnalysisContext context)
-    {
         // The three concrete attributes are matched rather than their CombiningStrategyAttribute base class,
         // so user-defined strategies stay out of scope as the specification states.
-        var targets = new[]
-            {
-                context.Compilation.GetTypeByMetadataName("NUnit.Framework.PairwiseAttribute"),
-                context.Compilation.GetTypeByMetadataName("NUnit.Framework.SequentialAttribute"),
-                context.Compilation.GetTypeByMetadataName("NUnit.Framework.CombinatorialAttribute"),
-            }
-            .Where(t => t is not null)
-            .ToImmutableArray();
-        if (targets.IsEmpty)
-        {
-            return;
-        }
-
-        // GetSpecialType is used instead of GetTypeByMetadataName: it never returns null, and matching the exact
-        // non-generic IEnumerator symbol excludes IEnumerator<T> without extra checks.
-        var enumerator = context.Compilation.GetSpecialType(SpecialType.System_Collections_IEnumerator);
-
-        context.RegisterSymbolAction(symbolContext =>
-        {
-            symbolContext.CancellationToken.ThrowIfCancellationRequested();
-            var method = (IMethodSymbol)symbolContext.Symbol;
-            if (!SymbolEqualityComparer.Default.Equals(method.ReturnType, enumerator))
-            {
-                return;
-            }
-
-            foreach (var attribute in method.GetAttributes())
-            {
-                if (!targets.Contains(attribute.AttributeClass?.OriginalDefinition, SymbolEqualityComparer.Default))
-                {
-                    continue;
-                }
-
-                // Reported at the attribute rather than the method name so that each offending attribute is highlighted.
-                // ApplicationSyntaxReference is null only for attributes from metadata, which a SymbolAction on source methods never sees.
-                var location = attribute.ApplicationSyntaxReference?.GetSyntax(symbolContext.CancellationToken).GetLocation()
-                               ?? method.Locations[0];
-                symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location, attribute.AttributeClass!.Name));
-            }
-        }, SymbolKind.Method);
+        context.RegisterCompilationStartAction(c => CoroutineAttributeAnalysis.Register(c, Rule,
+            "NUnit.Framework.PairwiseAttribute",
+            "NUnit.Framework.SequentialAttribute",
+            "NUnit.Framework.CombinatorialAttribute"));
     }
 }
