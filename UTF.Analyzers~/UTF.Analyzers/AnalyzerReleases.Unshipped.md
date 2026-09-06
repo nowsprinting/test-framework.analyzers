@@ -9,3 +9,4 @@ UTF1004 | Structure | Error | OneTimeSetUp and OneTimeTearDown attributes are no
 UTF2001 | Assertion | Error | Assert.ThrowsAsync, CatchAsync, and DoesNotThrowAsync are not supported
 UTF2002 | Assertion | Error | Async delegates are not supported as the actual value of Throws constraints, Assert.Throws, Assert.Catch, and Assert.DoesNotThrow
 UTF2003 | Assertion | Error | Async delegates are not supported as the actual value of the constraint model
+UTF2004 | Assertion | Error | Only TestDelegate is supported as the actual value of the AllocatingGCMemory constraint

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -132,7 +133,9 @@ internal sealed class AsyncDelegateAnalysis
         return null;
     }
 
-    private IOperation? ConstraintArgument(IInvocationOperation invocation)
+    public bool IsThat(IMethodSymbol method) => _that.Contains(method.OriginalDefinition);
+
+    public IOperation? ConstraintArgument(IInvocationOperation invocation)
     {
         foreach (var a in invocation.Arguments)
         {
@@ -190,30 +193,51 @@ internal sealed class AsyncDelegateAnalysis
     }
 
     /// <summary>
-    /// Walks a constraint expression such as Throws.TypeOf&lt;T&gt;().With.Message.EqualTo(...) back to its leftmost member
-    /// and returns its display name ("Throws.TypeOf", "ThrowsConstraint") when that member belongs to Throws or is a
-    /// ThrowsConstraint construction, or null otherwise.
-    /// A local, field, parameter, or method result is not followed to its origin: following initializers needs a
-    /// semantic model of the declaring file and still misses reassignments, and an unfollowed Throws constraint is
-    /// reported by UTF2003 rather than going unreported.
+    /// Yields the nodes of a constraint expression such as Throws.TypeOf&lt;T&gt;().With.Message.EqualTo(...) from the
+    /// rightmost call to the leftmost member, skipping conversions. An extension-method call
+    /// (Is.Not.AllocatingGCMemory()) carries its receiver as the first argument, not as Instance. The walk stops at
+    /// any other node (a local, field, parameter, or method result is not followed to its origin: following
+    /// initializers needs a semantic model of the declaring file and still misses reassignments).
+    /// </summary>
+    public static IEnumerable<IOperation> ConstraintChain(IOperation? operation)
+    {
+        while (operation is not null)
+        {
+            if (operation is IConversionOperation conversion)
+            {
+                operation = conversion.Operand;
+                continue;
+            }
+
+            yield return operation;
+            operation = operation switch
+            {
+                IInvocationOperation { Instance: { } instance } => instance,
+                IInvocationOperation { TargetMethod.IsExtensionMethod: true, Arguments.Length: > 0 } call =>
+                    call.Arguments[0].Value,
+                IPropertyReferenceOperation property => property.Instance,
+                _ => null,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Returns the display name of the leftmost member ("Throws.TypeOf", "ThrowsConstraint") when it belongs to Throws
+    /// or is a ThrowsConstraint construction, or null otherwise. An unfollowed Throws constraint is reported by UTF2003
+    /// rather than going unreported.
     /// </summary>
     private string? ThrowsRoot(IOperation? operation)
     {
         ISymbol? root = null;
-        while (operation is not null)
+        foreach (var node in ConstraintChain(operation))
         {
-            switch (operation)
+            switch (node)
             {
-                case IConversionOperation conversion:
-                    operation = conversion.Operand;
-                    break;
                 case IInvocationOperation call:
                     root = call.TargetMethod;
-                    operation = call.Instance;
                     break;
                 case IPropertyReferenceOperation property:
                     root = property.Property;
-                    operation = property.Instance;
                     break;
                 case IObjectCreationOperation creation:
                     return creation.Type is not null &&

@@ -7,6 +7,8 @@ namespace NUnit.Framework
 {
     public abstract class Is
     {
+        public static ConstraintExpression Not => throw new NotImplementedException();
+
         public static EqualConstraint EqualTo(object expected)
         {
             throw new NotImplementedException();
