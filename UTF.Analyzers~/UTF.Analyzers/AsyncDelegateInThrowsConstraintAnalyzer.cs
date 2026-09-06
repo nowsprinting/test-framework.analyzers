@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -38,62 +39,68 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        var compilation = context.Compilation;
-        var assert = compilation.GetTypeByMetadataName("NUnit.Framework.Assert");
-        var throws = compilation.GetTypeByMetadataName("NUnit.Framework.Throws");
-        var resolveConstraint = compilation.GetTypeByMetadataName("NUnit.Framework.Constraints.IResolveConstraint");
-        var task = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
-        var genericTask = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
-        if (assert is null || throws is null || resolveConstraint is null || task is null || genericTask is null)
+        var assert = context.Compilation.GetTypeByMetadataName("NUnit.Framework.Assert");
+        var throws = context.Compilation.GetTypeByMetadataName("NUnit.Framework.Throws");
+        var resolveConstraint =
+            context.Compilation.GetTypeByMetadataName("NUnit.Framework.Constraints.IResolveConstraint");
+        var taskTypes = TaskTypes.Resolve(context.Compilation);
+        if (assert is null || throws is null || resolveConstraint is null || taskTypes is null)
         {
             return;
         }
 
-        var comparer = SymbolEqualityComparer.Default;
-        var that = assert.GetMembers("That").OfType<IMethodSymbol>().ToImmutableHashSet<ISymbol>(comparer);
+        var that = assert.GetMembers("That").OfType<IMethodSymbol>()
+            .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
         var testDelegateAssertions = new[] { "Throws", "Catch", "DoesNotThrow" }
             .SelectMany(name => assert.GetMembers(name).OfType<IMethodSymbol>())
-            .ToImmutableHashSet<ISymbol>(comparer);
+            .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
 
         context.RegisterOperationAction(operationContext =>
         {
             operationContext.CancellationToken.ThrowIfCancellationRequested();
             var invocation = (IInvocationOperation)operationContext.Operation;
             var method = invocation.TargetMethod.OriginalDefinition;
-
-            string? receivingApi = null;
-            if (that.Contains(method))
+            var isThat = that.Contains(method);
+            if (!isThat && !testDelegateAssertions.Contains(method))
             {
-                // The constraint is located by parameter type rather than by position so that the message overloads
-                // (del, expr, message, args) are matched the same way as the two-argument one.
-                var constraint = invocation.Arguments.FirstOrDefault(a =>
-                    comparer.Equals(a.Parameter?.Type, resolveConstraint));
-                var root = ConstraintRoot(constraint?.Value);
-                if (root is null || !comparer.Equals(root.ContainingType, throws))
+                return;
+            }
+
+            // The delegate is checked before the constraint because it is the cheaper and more selective filter:
+            // most Assert.That calls take a plain value, and most Assert.Throws calls take a synchronous lambda.
+            // Arguments are located by parameter type rather than by position so that the message overloads
+            // (del, expr, message, args) and Assert.Throws(Type, TestDelegate) are matched the same way.
+            var argument = invocation.Arguments.FirstOrDefault(a => a.Parameter?.Type.TypeKind == TypeKind.Delegate);
+            if (argument is null || !IsAsyncDelegate(argument, taskTypes))
+            {
+                return;
+            }
+
+            ISymbol receivingApi = method;
+            if (isThat)
+            {
+                IOperation? constraint = null;
+                foreach (var a in invocation.Arguments)
+                {
+                    if (SymbolEqualityComparer.Default.Equals(a.Parameter?.Type, resolveConstraint))
+                    {
+                        constraint = a.Value;
+                        break;
+                    }
+                }
+
+                var root = ConstraintRoot(constraint);
+                if (root is null || !SymbolEqualityComparer.Default.Equals(root.ContainingType, throws))
                 {
                     return;
                 }
 
-                receivingApi = $"{throws.Name}.{root.Name}";
-            }
-            else if (testDelegateAssertions.Contains(method))
-            {
-                receivingApi = $"{assert.Name}.{method.Name}";
+                receivingApi = root;
             }
 
-            if (receivingApi is null)
-            {
-                return;
-            }
-
-            // The delegate is the argument whose parameter is a delegate type; Assert.Throws(Type, TestDelegate) has it second.
-            var argument = invocation.Arguments.FirstOrDefault(a => a.Parameter?.Type.TypeKind == TypeKind.Delegate);
-            if (argument is null || !IsAsyncDelegate(argument.Value, task, genericTask))
-            {
-                return;
-            }
-
-            operationContext.ReportDiagnostic(Diagnostic.Create(Rule, argument.Syntax.GetLocation(), receivingApi));
+            // The name is built from the symbol rather than the syntax so that a call through "using static" still reads "Throws.X".
+            operationContext.ReportDiagnostic(Diagnostic.Create(Rule, argument.Syntax.GetLocation(),
+                $"{receivingApi.ContainingType.Name}.{receivingApi.Name}"));
         }, OperationKind.Invocation);
     }
 
@@ -128,30 +135,24 @@ public sealed class AsyncDelegateInThrowsConstraintAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    /// Mirrors NUnit's AsyncInvocationRegion.IsAsyncOperation: the delegate returns Task or Task&lt;TResult&gt;, or its
-    /// method is an async method (which is the async void case for TestDelegate).
+    /// Mirrors NUnit's AsyncInvocationRegion.IsAsyncOperation. The return type is read from the bound delegate parameter
+    /// (ActualValueDelegate&lt;Task&gt;) rather than from the lambda, so a delegate held in a variable is covered too;
+    /// the async modifier must come from the creation target because it is the only trace of an async void lambda on a TestDelegate.
     /// </summary>
-    private static bool IsAsyncDelegate(IOperation value, INamedTypeSymbol task, INamedTypeSymbol genericTask)
+    private static bool IsAsyncDelegate(IArgumentOperation argument, TaskTypes taskTypes)
     {
-        if (value is IConversionOperation conversion)
+        var invoke = ((INamedTypeSymbol)argument.Parameter!.Type).DelegateInvokeMethod;
+        if (invoke is not null && taskTypes.IsTask(invoke.ReturnType))
         {
-            value = conversion.Operand;
+            return true;
         }
 
-        // A Task passed by value (Assert.That(FooAsync(), Throws.X)) is not a delegate creation and is left to NUnit2044.
-        var method = (value as IDelegateCreationOperation)?.Target switch
+        var value = argument.Value is IConversionOperation conversion ? conversion.Operand : argument.Value;
+        return (value as IDelegateCreationOperation)?.Target switch
         {
-            IAnonymousFunctionOperation lambda => lambda.Symbol,
-            IMethodReferenceOperation reference => reference.Method,
-            _ => null,
+            IAnonymousFunctionOperation lambda => lambda.Symbol.IsAsync,
+            IMethodReferenceOperation reference => reference.Method.IsAsync,
+            _ => false,
         };
-        if (method is null)
-        {
-            return false;
-        }
-
-        var comparer = SymbolEqualityComparer.Default;
-        var returnType = method.ReturnType.OriginalDefinition;
-        return method.IsAsync || comparer.Equals(returnType, task) || comparer.Equals(returnType, genericTask);
     }
 }

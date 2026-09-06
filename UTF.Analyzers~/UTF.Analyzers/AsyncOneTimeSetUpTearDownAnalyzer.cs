@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -40,21 +41,17 @@ public sealed class AsyncOneTimeSetUpTearDownAnalyzer : DiagnosticAnalyzer
         // and the rule must still report on 1.4.x.
         var oneTimeSetUp = context.Compilation.GetTypeByMetadataName("NUnit.Framework.OneTimeSetUpAttribute");
         var oneTimeTearDown = context.Compilation.GetTypeByMetadataName("NUnit.Framework.OneTimeTearDownAttribute");
-        var task = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
-        var genericTask = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
-        if ((oneTimeSetUp is null && oneTimeTearDown is null) || task is null || genericTask is null)
+        var taskTypes = TaskTypes.Resolve(context.Compilation);
+        if ((oneTimeSetUp is null && oneTimeTearDown is null) || taskTypes is null)
         {
             return;
         }
-
-        bool IsTask(ITypeSymbol type) =>
-            SymbolEqualityComparer.Default.Equals(type, task) || SymbolEqualityComparer.Default.Equals(type, genericTask);
 
         context.RegisterSymbolAction(symbolContext =>
         {
             symbolContext.CancellationToken.ThrowIfCancellationRequested();
             var method = (IMethodSymbol)symbolContext.Symbol;
-            if (!method.IsAsync && !IsTask(method.ReturnType.OriginalDefinition))
+            if (!taskTypes.IsAsyncOrReturnsTask(method))
             {
                 return;
             }
@@ -81,7 +78,8 @@ public sealed class AsyncOneTimeSetUpTearDownAnalyzer : DiagnosticAnalyzer
 
                 // Reported at the attribute rather than the method name so that each offending attribute is highlighted.
                 // ApplicationSyntaxReference is null only for attributes from metadata, which a SymbolAction on source methods never sees.
-                var location = attribute.ApplicationSyntaxReference?.GetSyntax(symbolContext.CancellationToken).GetLocation()
+                var location = attribute.ApplicationSyntaxReference?.GetSyntax(symbolContext.CancellationToken)
+                                   .GetLocation()
                                ?? method.Locations[0];
                 symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location, attributeClass.Name, replacement));
             }

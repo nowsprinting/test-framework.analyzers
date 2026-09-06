@@ -17,10 +17,5 @@ namespace NUnit.Framework.Constraints
         {
             throw new NotImplementedException();
         }
-
-        public EqualConstraint EqualTo(object expected)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

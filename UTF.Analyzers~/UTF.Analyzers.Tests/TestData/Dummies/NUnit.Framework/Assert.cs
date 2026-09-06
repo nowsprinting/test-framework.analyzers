@@ -55,11 +55,6 @@ namespace NUnit.Framework
             throw new NotImplementedException();
         }
 
-        public static Exception Throws(IResolveConstraint expression, TestDelegate code)
-        {
-            throw new NotImplementedException();
-        }
-
         public static Exception Throws(Type expectedExceptionType, TestDelegate code)
         {
             throw new NotImplementedException();

@@ -14,6 +14,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("ThrowsTypeOfGenericTaskLambdaWithMessage", 12, 25, "Throws.TypeOf")]
         [InlineData("UsingStaticThrows", 13, 25, "Throws.TypeOf")]
         [InlineData("AssertThrowsAsyncLambda", 12, 54, "Assert.Throws")]
+        [InlineData("AssertThrowsTypeAsyncLambda", 12, 62, "Assert.Throws")]
         [InlineData("AssertCatchAsyncLambda", 12, 26, "Assert.Catch")]
         [InlineData("AssertDoesNotThrowAsyncVoidMethodGroup", 12, 33, "Assert.DoesNotThrow")]
         public async Task AsyncDelegate_ReportsAtDelegateArgumentWithReceivingApi(string fixture, int line, int column,

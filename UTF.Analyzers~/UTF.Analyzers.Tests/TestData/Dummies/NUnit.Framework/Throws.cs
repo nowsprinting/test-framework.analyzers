@@ -11,8 +11,6 @@ namespace NUnit.Framework
 
         public static ThrowsNothingConstraint Nothing => throw new NotImplementedException();
 
-        public static ExactTypeConstraint ArgumentException => throw new NotImplementedException();
-
         public static ExactTypeConstraint TypeOf<TExpected>()
         {
             throw new NotImplementedException();
