@@ -85,19 +85,6 @@ This package is published to both UPM and NuGet. Choose one of the following.
 1. Open the NuGetForUnity window via **NuGet > Manage NuGet Packages**
 2. Search "UTF.Analyzers" and click **Install**
 
-### Install NuGet package via [UnityNuGet](https://github.com/bdovaz/UnityNuGet) (hosted on OpenUPM)
-
-1. Install the package:
-
-   ```bash
-   openupm add org.nuget.utf.analyzers
-   ```
-
-2. Open the `.asmdef` of each assembly you want the analyzer to apply to, add `UTF.Analyzers_Unity` to its **Assembly Definition References**.
-
-> [!TIP]\
-> Analyzers installed via NuGetForUnity apply to all assemblies in the project (including those in the PackageCache), while analyzers installed via UnityNuGet apply only to the referenced assembly and any assemblies that depend on it.
-
 
 ## License
 
