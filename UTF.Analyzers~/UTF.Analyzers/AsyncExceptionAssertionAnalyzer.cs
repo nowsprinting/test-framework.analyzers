@@ -18,7 +18,7 @@ public sealed class AsyncExceptionAssertionAnalyzer : DiagnosticAnalyzer
         DiagnosticId,
         title: "Assert.ThrowsAsync, CatchAsync, and DoesNotThrowAsync are not supported",
         messageFormat:
-        "'{0}' is not supported. Test the exception with try/catch in an 'async Task' test method instead.",
+        "'{0}' is not supported. Test the exception with try/catch in an async test method instead.",
         category: "Assertion",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
