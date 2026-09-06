@@ -18,6 +18,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("ExplicitImplementation", 13, 13, ApplyToTest)]
         [InlineData("OverrideOfImplementation", 13, 13, ApplyToTest)]
         [InlineData("InheritedImplementation", 17, 13, ApplyToTest)]
+        [InlineData("OverrideInIntermediateBase", 17, 13, ApplyToTest)]
         [InlineData("Rethrow", 19, 17, ApplyToTest)]
         [InlineData("ThrowInCatchHandler", 19, 17, ApplyToTest)]
         [InlineData("ThrowInFinally", 19, 17, ApplyToTest)]
