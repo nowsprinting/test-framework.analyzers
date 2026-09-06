@@ -14,5 +14,10 @@ namespace NUnit.Framework.Constraints
         {
             throw new NotImplementedException();
         }
+
+        public DelayedConstraint After(int delayInMilliseconds, int pollingInterval)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
