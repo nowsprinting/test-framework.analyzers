@@ -1,6 +1,14 @@
 # UTF.Analyzers
 
-Roslyn analyzers for writing unit tests with Unity Test Framework.
+[![Meta file check](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/metacheck.yml/badge.svg)](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/metacheck.yml)
+[![Build](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/build.yml/badge.svg)](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/build.yml)
+
+Provides Roslyn analyzers for writing unit tests with Unity Test Framework.
+Diagnoses API usage that could cause Unity Editor freezes or runtime errors before running tests.
+
+## Required
+
+* Unity 2022.3.12f1 or later
 
 
 ## Diagnostics
@@ -47,17 +55,17 @@ Rules for authors of custom attributes, constraints, and comparers.
 
 ## Installation
 
-If you installed [openupm-cli](https://github.com/openupm/openupm-cli), run the command below
+This package is published to both UPM and NuGet. Choose one of the following.
 
-```bash
-openupm add com.nowsprinting.test-framework.analyzers
-```
+### Install UPM package via [OpenUPM](https://openupm.com/)
 
-Or open Package Manager window (Window | Package Manager) and add package from git URL
-
-```
-https://github.com/nowsprinting/com.nowsprinting.test-framework.analyzers.git
-```
+1. Open the Project Settings window (**Editor > Project Settings**) and select **Package Manager** tab
+2. Click **+** button under the **Scoped Registries** and enter the following settings:
+    1. **Name:** `package.openupm.com`
+    2. **URL:** `https://package.openupm.com`
+    3. **Scope(s):** `com.nowsprinting` and `nunit.analyzers.unity`
+3. Open the Package Manager window (**Window > Package Manager**) and select **My Registries** tab
+4. Select **UTF.Analyzers** and click the **Install** button
 
 > [!NOTE]\
 > You do not need to add a reference to the test assembly definition file (asmdef).
@@ -69,6 +77,24 @@ https://github.com/nowsprinting/com.nowsprinting.test-framework.analyzers.git
 > - NUnit.Analyzers v3.9.0
 >
 > If you do not wish to use these, please use the NuGet package instead.
+
+### Install NuGet package via [NuGetForUnity]([NuGetForUnity](https://github.com/GlitchEnzo/NuGetForUnity))
+
+1. Open the NuGetForUnity window via **NuGet > Manage NuGet Packages**
+2. Search "UTF.Analyzers" and click **Install**
+
+### Install NuGet package via [UnityNuGet]([UnityNuGet](https://github.com/bdovaz/UnityNuGet)) (hosted on OpenUPM)
+
+1. Install the package:
+
+   ```bash
+   openupm add org.nuget.utf.analyzers
+   ```
+
+2. Open the `.asmdef` of each assembly you want the analyzer to apply to, add `UTF.Analyzers_Unity` to its **Assembly Definition References**.
+
+> [!TIP]\
+> Analyzers installed via NuGetForUnity apply to all assemblies in the project (including those in the PackageCache), while analyzers installed via UnityNuGet apply only to the referenced assembly and any assemblies that depend on it.
 
 
 ## License
