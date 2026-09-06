@@ -4,5 +4,8 @@ namespace NUnit.Framework.Constraints
 {
     public class DelayedConstraint : Constraint
     {
+        public DelayedConstraint(IConstraint baseConstraint, int delayInMilliseconds)
+        {
+        }
     }
 }

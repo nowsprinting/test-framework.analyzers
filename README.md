@@ -34,6 +34,7 @@ Rules about misuse of assertions and constraints.
 | [UTF2002](Documentation~/rules/UTF2002.md) | Async delegates are not supported as the actual value of Throws constraints, Assert.Throws, Assert.Catch, and Assert.DoesNotThrow |
 | [UTF2003](Documentation~/rules/UTF2003.md) | Async delegates are not supported as the actual value of the constraint model |
 | [UTF2004](Documentation~/rules/UTF2004.md) | Only TestDelegate is supported as the actual value of the AllocatingGCMemory constraint |
+| [UTF2005](Documentation~/rules/UTF2005.md) | DelayedConstraint is not supported |
 
 ### Suppressor (UTF3xxx)
 
