@@ -37,7 +37,7 @@ namespace UTF.Analyzers.Tests
             return test.RunAsync();
         }
 
-        internal sealed class Test : CSharpAnalyzerTest<TAnalyzer, XUnitVerifier>
+        internal class Test : CSharpAnalyzerTest<TAnalyzer, XUnitVerifier>
         {
             public Test()
             {
