@@ -12,10 +12,12 @@ namespace UTF.Analyzers.Tests.TestData.UTF5001
         {
             test.RunState = RunState.Runnable;
 
+#pragma warning disable CS8321 // A local function that is never called is the case under test
             void Fail()
             {
                 throw new InvalidOperationException();
             }
+#pragma warning restore CS8321
         }
     }
 }
