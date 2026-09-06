@@ -7,5 +7,10 @@ namespace NUnit.Framework.Constraints
     public abstract class Constraint : IConstraint
     {
         public ConstraintExpression With => throw new NotImplementedException();
+
+        public DelayedConstraint After(int delayInMilliseconds)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
