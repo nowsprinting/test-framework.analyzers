@@ -7,16 +7,16 @@ namespace UTF.Analyzers.Tests
     public class NonTestDelegateInAllocatingGCMemoryAnalyzerTests
     {
         [Theory]
-        [InlineData("ValueLambdaWithNot", 17, "ActualValueDelegate<bool>")]
-        [InlineData("BoolMethodGroup", 17, "ActualValueDelegate<bool>")]
-        [InlineData("ActionVariable", 18, "Action")]
-        [InlineData("FuncVariable", 18, "Func<bool>")]
-        [InlineData("AssumeValueLambda", 17, "ActualValueDelegate<bool>")]
-        [InlineData("UnnegatedConstraint", 17, "ActualValueDelegate<bool>")]
-        [InlineData("AfterChain", 17, "ActualValueDelegate<bool>")]
-        [InlineData("NewConstraint", 17, "ActualValueDelegate<bool>")]
-        [InlineData("WithMessage", 17, "ActualValueDelegate<bool>")]
-        [InlineData("TaskValue", 17, "Task<int>")]
+        [InlineData("ValueLambdaWithNot", 15, "ActualValueDelegate<bool>")]
+        [InlineData("BoolMethodGroup", 15, "ActualValueDelegate<bool>")]
+        [InlineData("ActionVariable", 17, "Action")]
+        [InlineData("FuncVariable", 17, "Func<bool>")]
+        [InlineData("AssumeValueLambda", 15, "ActualValueDelegate<bool>")]
+        [InlineData("UnnegatedConstraint", 15, "ActualValueDelegate<bool>")]
+        [InlineData("AfterChain", 15, "ActualValueDelegate<bool>")]
+        [InlineData("NewConstraint", 15, "ActualValueDelegate<bool>")]
+        [InlineData("WithMessage", 15, "ActualValueDelegate<bool>")]
+        [InlineData("TaskValue", 16, "Task<int>")]
         public async Task NonTestDelegateActual_ReportsAtActualArgumentWithBoundType(string fixture, int line,
             string boundType)
         {
