@@ -7,9 +7,5 @@ namespace NUnit.Framework.Constraints
         public DelayedConstraint(IConstraint baseConstraint, int delayInMilliseconds)
         {
         }
-
-        public DelayedConstraint(IConstraint baseConstraint, int delayInMilliseconds, int pollingInterval)
-        {
-        }
     }
 }

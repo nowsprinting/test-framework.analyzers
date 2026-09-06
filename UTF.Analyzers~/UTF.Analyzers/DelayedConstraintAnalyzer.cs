@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -44,10 +44,8 @@ public sealed class DelayedConstraintAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        // After is non-virtual on Constraint, so a call on any subclass resolves to one of these symbols; the
-        // overloads are collected once rather than matched by name per invocation, following the repository convention.
-        var afterMethods = constraint.GetMembers("After").OfType<IMethodSymbol>()
-            .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
+        // After is non-virtual on Constraint, so a call on any subclass resolves to one of these symbols.
+        var afterMethods = AsyncDelegateAnalysis.Methods(constraint, "After");
 
         context.RegisterOperationAction(operationContext =>
         {

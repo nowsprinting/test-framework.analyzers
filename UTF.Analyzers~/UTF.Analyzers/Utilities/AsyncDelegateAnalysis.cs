@@ -112,7 +112,7 @@ internal sealed class AsyncDelegateAnalysis
         return Owner.ThrowsConstraint;
     }
 
-    private static ImmutableHashSet<ISymbol> Methods(INamedTypeSymbol type, params string[] names) =>
+    internal static ImmutableHashSet<ISymbol> Methods(INamedTypeSymbol type, params string[] names) =>
         names.SelectMany(name => type.GetMembers(name).OfType<IMethodSymbol>())
             .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
 
