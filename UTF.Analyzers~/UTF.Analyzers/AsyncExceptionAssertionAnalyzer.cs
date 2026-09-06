@@ -24,7 +24,7 @@ public sealed class AsyncExceptionAssertionAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description:
         "Detects any call to Assert.ThrowsAsync, Assert.CatchAsync, or Assert.DoesNotThrowAsync. These methods wait for the returned Task synchronously on the calling thread. Unity Test Framework runs tests on the main thread, so the Editor freezes.",
-        helpLinkUri: "https://nowsprinting.github.io/test-framework.analyzers/Documentation~/rules/UTF2001.md");
+        helpLinkUri: "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF2001.md");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 

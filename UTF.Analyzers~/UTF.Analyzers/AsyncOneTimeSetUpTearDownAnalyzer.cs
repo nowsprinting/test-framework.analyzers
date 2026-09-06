@@ -22,7 +22,7 @@ public sealed class AsyncOneTimeSetUpTearDownAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description:
         "Detects a method marked with OneTimeSetUpAttribute or OneTimeTearDownAttribute whose return type is System.Threading.Tasks.Task (or Task<TResult>), or that has the async modifier. Unity Test Framework runs these methods through NUnit's synchronous command, so a Task-returning method freezes the Editor and an async void method fails.",
-        helpLinkUri: "https://nowsprinting.github.io/test-framework.analyzers/Documentation~/rules/UTF1004.md");
+        helpLinkUri: "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF1004.md");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 

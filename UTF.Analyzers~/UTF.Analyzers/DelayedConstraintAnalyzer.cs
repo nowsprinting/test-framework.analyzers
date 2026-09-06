@@ -26,7 +26,7 @@ public sealed class DelayedConstraintAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description:
         "Detects any call to Constraint.After and any new DelayedConstraint(...). DelayedConstraint waits with Thread.Sleep on the calling thread. Unity Test Framework runs tests on the main thread, so nothing that is driven by the main thread can change while it waits, and a condition driven by the main thread never becomes true.",
-        helpLinkUri: "https://nowsprinting.github.io/test-framework.analyzers/Documentation~/rules/UTF2005.md");
+        helpLinkUri: "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF2005.md");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 

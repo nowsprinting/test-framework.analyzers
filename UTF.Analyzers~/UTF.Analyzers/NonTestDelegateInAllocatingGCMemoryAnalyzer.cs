@@ -25,7 +25,7 @@ public sealed class NonTestDelegateInAllocatingGCMemoryAnalyzer : DiagnosticAnal
         isEnabledByDefault: true,
         description:
         "Detects an actual value passed to Assert.That or Assume.That together with the AllocatingGCMemory constraint that does not bind to the TestDelegate parameter: a lambda or method group that returns a value, or a variable of a delegate type other than TestDelegate. AllocatingGCMemoryConstraint throws ArgumentException at runtime for these when the constraint is negated or otherwise wrapped.",
-        helpLinkUri: "https://nowsprinting.github.io/test-framework.analyzers/Documentation~/rules/UTF2004.md");
+        helpLinkUri: "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF2004.md");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 

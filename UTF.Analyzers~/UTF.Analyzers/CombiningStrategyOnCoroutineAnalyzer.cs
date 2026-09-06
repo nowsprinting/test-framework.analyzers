@@ -21,7 +21,7 @@ public sealed class CombiningStrategyOnCoroutineAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "Detects PairwiseAttribute, SequentialAttribute, or CombinatorialAttribute applied to a test method whose return type is System.Collections.IEnumerator (a coroutine-style test method).",
-        helpLinkUri: "https://nowsprinting.github.io/test-framework.analyzers/Documentation~/rules/UTF1003.md");
+        helpLinkUri: "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF1003.md");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 

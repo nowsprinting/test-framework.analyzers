@@ -22,7 +22,7 @@ public sealed class CommandWrapperOnAsyncTestAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description:
         "Detects a test method whose return type is System.Threading.Tasks.Task or System.Collections.IEnumerator and that is marked with an attribute implementing NUnit.Framework.Interfaces.ICommandWrapper. Unity Test Framework runs such methods through its own coroutine-driven commands, which a user-defined wrapper cannot drive; the test body never runs.",
-        helpLinkUri: "https://nowsprinting.github.io/test-framework.analyzers/Documentation~/rules/UTF1005.md");
+        helpLinkUri: "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF1005.md");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 

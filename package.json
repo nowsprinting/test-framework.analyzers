@@ -10,7 +10,7 @@
     "nunit.analyzers.unity": "3.9.0"
   },
   "displayName": "UTF.Analyzers",
-  "documentationUrl": "https://nowsprinting.github.io/test-framework.analyzers/",
+  "documentationUrl": "https://github.com/nowsprinting/test-framework.analyzers",
   "files": [
     "Documentation~",
     "UTF.Analyzers/",

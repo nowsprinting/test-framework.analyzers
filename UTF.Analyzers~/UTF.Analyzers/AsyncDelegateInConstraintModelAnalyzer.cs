@@ -24,7 +24,7 @@ public sealed class AsyncDelegateInConstraintModelAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description:
         "Detects an async delegate passed as the actual value of Assert.That with a constraint that is not a Throws constraint, or passed as the actual value of Assume.That with any constraint. NUnit evaluates the delegate and waits for the returned Task synchronously on the calling thread. Unity Test Framework runs tests on the main thread, so the Editor freezes.",
-        helpLinkUri: "https://nowsprinting.github.io/test-framework.analyzers/Documentation~/rules/UTF2003.md");
+        helpLinkUri: "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF2003.md");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 

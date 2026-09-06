@@ -24,7 +24,7 @@ public sealed class GenericTaskTestMethodAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description:
         "Detects a test method whose return type is System.Threading.Tasks.Task<TResult>. Unity Test Framework runs only the non-generic Task as an async test; a Task<TResult> method with ExpectedResult is executed synchronously and freezes the Editor.",
-        helpLinkUri: "https://nowsprinting.github.io/test-framework.analyzers/Documentation~/rules/UTF1002.md");
+        helpLinkUri: "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF1002.md");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
