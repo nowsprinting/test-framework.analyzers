@@ -155,7 +155,7 @@ internal sealed class AsyncDelegateAnalysis
     /// lambda, so a delegate held in a variable is covered too; the async modifier must come from the creation target
     /// because it is the only trace of an async void lambda on a TestDelegate.
     /// </summary>
-    private static bool IsAsyncDelegate(IArgumentOperation argument)
+    public static bool IsAsyncDelegate(IArgumentOperation argument)
     {
         var invoke = ((INamedTypeSymbol)argument.Parameter!.Type).DelegateInvokeMethod;
         if (invoke is not null && IsAwaitable(invoke.ReturnType))
