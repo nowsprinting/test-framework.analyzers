@@ -49,6 +49,38 @@ Create `../Documentation~/rules/<DIAGNOSTIC_ID>.md` based on `assets/TEMPLATE.md
 Anything that must be stopped before the test runs is an **Error**. Code that leads to a runtime error or a freeze is an Error,
 e.g., "a test that waits for a state transition has no `Timeout` attribute". At Warning or below, a test that loops forever would be run without a timeout.
 
+#### Suppressor rules
+
+A suppressor (`DiagnosticSuppressor`) removes a diagnostic reported by another analyzer when it does not apply in the target environment.
+It has no severity, message, or code fix, so adapt the template:
+
+- Table: replace the `Severity` row with `Suppresses | <the other analyzer's rule ID>`. Keep `Category`, `Enabled`, and `CodeFix`.
+- Below the table, write `Justification: "..."` instead of a message. This is the sentence Roslyn shows to the user for the suppression.
+- Note under the table that the severity guidance above does not apply.
+- Motivation: name the suppressed rule, the analyzer package and version you verified it against, and the primary-source fact that makes it inapplicable
+  (e.g. the API the rule suggests does not exist in the library version the environment ships). If the rule has a code fix, state what applying it produces (typically a compile error).
+- Prefer a conditional suppression (suppress only while the inapplicability holds in the compilation) and state the condition under Notes as the exclusion condition.
+- Replace "Bad" / "Good" with sections that make sense for a suppression, e.g. "Suppressed" (the code the other rule reports, with a comment saying it is suppressed)
+  and "Not compilable in ..." (the code the other rule's fix would produce).
+
+**How users disable a suppressor**: a suppressor cannot be disabled from `.editorconfig` or `.globalconfig`. Roslyn checks only
+`CompilationOptions.SpecificDiagnosticOptions`, which is filled from ruleset files and the `-nowarn` compiler switch
+([dotnet/roslyn#49727](https://github.com/dotnet/roslyn/issues/49727)). `#pragma warning disable` and `[SuppressMessage]` do not apply either.
+In the Notes section, replace the `.editorconfig` example used by analyzer rules with both working methods:
+
+```
+-nowarn:<SUPPRESSION_ID>
+```
+
+in `csc.rsp` (Unity picks up `Assets/csc.rsp`), and
+
+```xml
+<Rule Id="<SUPPRESSION_ID>" Action="None" />
+```
+
+in a ruleset file (in Unity, `Default.ruleset` in `Assets/` or `<assembly name>.ruleset` next to the `.asmdef`).
+Do not write that `dotnet_diagnostic.<SUPPRESSION_ID>.severity = none` works; it silently does nothing.
+
 ### 4. Update README.md
 
 Add a row linking to the new file to the table of the corresponding category under "Diagnostics" in ../README.md.
