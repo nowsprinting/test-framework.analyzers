@@ -15,6 +15,7 @@ namespace UTF.Analyzers.Tests.TestData.UTF2003
             Assert.That(async () => await GetAsync(), Throws.Exception.TypeOf<InvalidOperationException>());
             Assert.That(async () => await GetAsync(), new ThrowsConstraint(new ExactTypeConstraint(typeof(InvalidOperationException))));
             Assert.That(async () => await GetAsync(), new ThrowsNothingConstraint());
+            // Not reported by UTF2003 because the constraint starts with Throws or constructs a ThrowsConstraint; UTF2002 covers these cases.
         }
 
         private static async Task<int> GetAsync()

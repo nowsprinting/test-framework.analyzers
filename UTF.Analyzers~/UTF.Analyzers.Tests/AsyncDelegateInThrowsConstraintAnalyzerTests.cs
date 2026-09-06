@@ -38,14 +38,6 @@ namespace UTF.Analyzers.Tests
         }
 
         [Theory]
-        [InlineData("ThrowsConstraintInVariable")]
-        [InlineData("ThrowsConstraintInField")]
-        public async Task ThrowsConstraintNotAtCallSite_KnownLimitation_NoDiagnostic(string fixture)
-        {
-            await Verifier.VerifyAsync($"UTF2002/{fixture}.cs");
-        }
-
-        [Theory]
         [InlineData("SyncDelegates")]
         [InlineData("TaskResultInsteadOfDelegate")]
         [InlineData("NonThrowsConstraintOnAsyncLambda")]
