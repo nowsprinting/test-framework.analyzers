@@ -17,7 +17,7 @@ namespace UTF.Analyzers.Tests.TestData.UTF5001
         {
             try
             {
-                return int.Parse(Environment.GetEnvironmentVariable("TIMEOUT"));
+                return int.Parse(Environment.GetEnvironmentVariable("TIMEOUT") ?? "");
             }
             catch (Exception)
             {

@@ -10,7 +10,7 @@ namespace UTF.Analyzers.Tests.TestData.UTF5001
     {
         public void ApplyToContext(ITestExecutionContext context)
         {
-            context.TestCaseTimeout = int.Parse(Environment.GetEnvironmentVariable("TIMEOUT"));
+            context.TestCaseTimeout = int.Parse(Environment.GetEnvironmentVariable("TIMEOUT") ?? "");
         }
     }
 }
