@@ -31,6 +31,7 @@ Rules about misuse of assertions and constraints.
 | Id | Title |
 |----|-------|
 | [UTF2001](Documentation~/rules/UTF2001.md) | Assert.ThrowsAsync, CatchAsync, and DoesNotThrowAsync are not supported |
+| [UTF2002](Documentation~/rules/UTF2002.md) | Async delegates are not supported as the actual value of Throws constraints, Assert.Throws, Assert.Catch, and Assert.DoesNotThrow |
 
 ### Suppressor (UTF3xxx)
 
