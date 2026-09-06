@@ -43,8 +43,9 @@ public sealed class AsyncExceptionAssertionAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        // Every overload (generic, Type, IResolveConstraint) is collected once from the type rather than matching
-        // TargetMethod.Name per invocation, so that a user-defined ThrowsAsync on another class is never confused with NUnit's.
+        // Every overload (generic, Type, IResolveConstraint) is collected once from the Assert type so that the
+        // per-invocation check is a symbol comparison; matching ContainingType plus TargetMethod.Name per invocation
+        // would work too, but the repository convention is to compare symbols, never name strings.
         var reported = new[] { "ThrowsAsync", "CatchAsync", "DoesNotThrowAsync" }
             .SelectMany(name => assert.GetMembers(name).OfType<IMethodSymbol>())
             .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
