@@ -59,6 +59,12 @@ It has no severity, message, or code fix, so adapt the template:
 - Note under the table that the severity guidance above does not apply.
 - Motivation: name the suppressed rule, the analyzer package and version you verified it against, and the primary-source fact that makes it inapplicable
   (e.g. the API the rule suggests does not exist in the library version the environment ships). If the rule has a code fix, state what applying it produces (typically a compile error).
+- **Check the suppressed rule's default severity first.** Roslyn never hands a diagnostic whose `DefaultSeverity` is `Error` to a suppressor
+  (`AnalyzerDriver.ApplyProgrammaticSuppressionsCore` filters on `d.DefaultSeverity != DiagnosticSeverity.Error`; the check is on the descriptor's
+  default, so lowering the severity in `.editorconfig` / `.globalconfig` does not help). Look up the `defaultSeverity` in the other analyzer's source
+  (or its docs) and, if it is `Error`, tell the user that a suppressor cannot work for this rule and stop; offer the alternatives instead
+  (the user disables the rule with `dotnet_diagnostic.<ID>.severity = none`, or the rule is re-implemented as a Unity-aware analyzer of this package).
+  Record the verified default severity in the Motivation section.
 - Prefer a conditional suppression (suppress only while the inapplicability holds in the compilation) and state the condition under Notes as the exclusion condition.
 - Replace "Bad" / "Good" with sections that make sense for a suppression, e.g. "Suppressed" (the code the other rule reports, with a comment saying it is suppressed)
   and "Not compilable in ..." (the code the other rule's fix would produce).

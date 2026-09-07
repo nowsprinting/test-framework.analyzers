@@ -11,6 +11,10 @@ constraint, not a project preference; verified against the Roslyn source (`Suppr
 - Declare one `SuppressionDescriptor` per suppressed rule: `Id` (the suppressor's own ID), `SuppressedDiagnosticId` (the other analyzer's rule ID), and `Justification` (a sentence shown to the user).
   There is no title, message, category, severity, or `helpLinkUri`.
 - Expose them through `SupportedSuppressions`. Roslyn hands the suppressor only diagnostics whose ID is one of its `SuppressedDiagnosticId`s.
+- **A diagnostic whose `DefaultSeverity` is `Error` can never be suppressed.** `AnalyzerDriver.ApplyProgrammaticSuppressionsCore` passes only
+  diagnostics with `!IsSuppressed && !IsNotConfigurable() && DefaultSeverity != DiagnosticSeverity.Error` to `ReportSuppressions`. The check is on the
+  descriptor's default, so an `.editorconfig` / `.globalconfig` severity override does not make an Error-by-default rule suppressible.
+  Verify the suppressed rule's `defaultSeverity` in its source before writing a suppressor; if it is `Error`, do not write one.
 - Override `ReportSuppressions(SuppressionAnalysisContext)`. There is no `Initialize`, no `RegisterCompilationStartAction`, and no per-node callback;
   the whole compilation's matching diagnostics arrive in `context.ReportedDiagnostics`.
 
@@ -130,7 +134,10 @@ Prefer the real analyzer from its NuGet package when it can see the test sources
   </Target>
   ```
 
-Use a **test-only stub** instead when the real analyzer cannot recognize the dummies. Known case: NUnit.Analyzers identifies `Assert` by
+Use a **test-only stub** instead when the real analyzer cannot recognize the dummies. **The stub must declare the same `DefaultSeverity` as the
+real rule** (look it up in the analyzer's source and cite the version in the stub's doc comment): Roslyn drops Error-by-default diagnostics before
+they reach any suppressor, so a stub declared at `Info` while the real rule is `Error` makes every suppressor test pass against a suppressor that
+does nothing in a real build. Known case: NUnit.Analyzers identifies `Assert` by
 `ContainingAssembly.Name == "nunit.framework"` (`ITypeSymbolExtensions.IsAssert`), and dummies are compiled into the test assembly,
 so none of its rules ever fire against them. The stub lives in the Tests project, is `internal`, reports the same diagnostic ID at the
 call sites the real rule would report, and needs no fidelity beyond that:
@@ -140,6 +147,7 @@ call sites the real rule would report, and needs no fidelity beyond that:
 internal sealed class Other1234Stub : DiagnosticAnalyzer
 {
     public static readonly DiagnosticDescriptor Rule = new(
+        // Same default severity as the real OTHER1234 (Other.Analyzers x.y.z); Error-by-default rules never reach a suppressor.
         FooSuppressor.SuppressedDiagnosticId, "Title", "Message", "Category", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);

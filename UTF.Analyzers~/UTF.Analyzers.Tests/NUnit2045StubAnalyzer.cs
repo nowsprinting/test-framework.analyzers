@@ -18,6 +18,8 @@ namespace UTF.Analyzers.Tests
             title: "Use Assert.Multiple",
             messageFormat: "Use Assert.Multiple",
             category: "Assertion",
+            // Same default severity as the real NUnit2045 (NUnit.Analyzers 3.9.0);
+            // Roslyn never passes an Error-by-default diagnostic to a suppressor, so the stub must not differ from the real rule here.
             DiagnosticSeverity.Info,
             isEnabledByDefault: true);
 

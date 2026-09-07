@@ -17,7 +17,9 @@ namespace UTF.Analyzers.Tests
             title: "Types that own disposable fields should be disposable",
             messageFormat: "Types that own disposable fields should be disposable",
             category: "Design",
-            DiagnosticSeverity.Info,
+            // Same default severity as the real CA1001 (RuleLevel.IdeHidden_BulkConfigurable in Microsoft.CodeAnalysis.NetAnalyzers);
+            // Roslyn never passes an Error-by-default diagnostic to a suppressor, so the stub must not differ from the real rule here.
+            DiagnosticSeverity.Hidden,
             isEnabledByDefault: true);
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
