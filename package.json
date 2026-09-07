@@ -12,9 +12,9 @@
   "displayName": "UTF Analyzers",
   "documentationUrl": "https://github.com/nowsprinting/test-framework.analyzers",
   "files": [
+    "Analyzers/",
+    "Analyzers.meta",
     "Documentation~",
-    "UTF.Analyzers/",
-    "UTF.Analyzers.meta",
     "LICENSE.md*",
     "package.json*",
     "README.md*"

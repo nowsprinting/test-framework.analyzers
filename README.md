@@ -147,5 +147,5 @@ cd Packages/com.nowsprinting.test-framework.analyzers/UTF.Analyzers~
 dotnet build -c Release UTF.Analyzers
 ```
 
-After the Release build, `UTF.Analyzers.dll` is automatically copied to `UTF.Analyzers/`.
+After the Release build, `UTF.Analyzers.dll` is automatically copied to `Analyzers/UTF.Analyzers/`.
 Please commit the copied DLL; it will be distributed as part of the UPM package.
