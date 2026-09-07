@@ -1,4 +1,4 @@
-# UTF.Analyzers
+# UTF Analyzers
 
 [![Meta file check](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/metacheck.yml/badge.svg)](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/metacheck.yml)
 [![Build](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/build.yml/badge.svg)](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/build.yml)
