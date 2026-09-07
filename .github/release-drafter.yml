@@ -6,6 +6,10 @@ template: |
   $CHANGES
 
 categories:
+  - type: pre-exclude
+    when:
+      labels:
+        - 'skip-changelog'
   - title: '🦑 Features'
     semver-increment: minor
     when:
@@ -41,9 +45,6 @@ categories:
         - 'minor'
   - type: version-resolver # No 'when' means the default increment
     semver-increment: patch
-
-exclude-labels:
-  - 'skip-changelog'
 
 category-template: '### $TITLE'
 change-template: '- $TITLE by @$AUTHOR in #$NUMBER'
