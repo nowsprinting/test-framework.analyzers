@@ -7,7 +7,7 @@ namespace UTF.Analyzers.Tests
     /// <summary>
     /// Reports CA1707 at the identifier of every ordinary method whose name contains an underscore so that a suppressor test
     /// has something to suppress. Referencing the real Microsoft.CodeAnalysis.NetAnalyzers would run every CA rule on the
-    /// dummies and fixtures. No dummy declares such a method, so no exclusion is needed.
+    /// dummies and fixtures.
     /// </summary>
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     internal sealed class CA1707StubAnalyzer : DiagnosticAnalyzer

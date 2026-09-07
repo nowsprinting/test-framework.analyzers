@@ -16,14 +16,21 @@ namespace UTF.Analyzers.Tests
             return new DiagnosticResult(CA1707StubAnalyzer.Rule).WithLocation(line, column).WithArguments(name);
         }
 
+        private static DiagnosticResult[] TestMethodsDiagnostics(bool suppressed)
+        {
+            return new[]
+            {
+                CA1707(10, 21, "Add_TwoPositiveNumbers_ReturnsSum").WithIsSuppressed(suppressed),
+                CA1707(15, 28, "LoadScene_SceneExists_IsLoadedAfterOneFrame").WithIsSuppressed(suppressed),
+                CA1707(22, 21, "IsPositive_PositiveNumber_ReturnsTrue").WithIsSuppressed(suppressed),
+                CA1707(27, 21, "IsPositive_FromSource_ReturnsTrue").WithIsSuppressed(suppressed),
+            };
+        }
+
         [Fact]
         public async Task TestMethod_SuppressesCA1707()
         {
-            await Verifier.VerifyAsync(new Test(), "UTF3005/TestMethods.cs",
-                CA1707(10, 21, "Add_TwoPositiveNumbers_ReturnsSum").WithIsSuppressed(true),
-                CA1707(15, 28, "LoadScene_SceneExists_IsLoadedAfterOneFrame").WithIsSuppressed(true),
-                CA1707(22, 21, "IsPositive_PositiveNumber_ReturnsTrue").WithIsSuppressed(true),
-                CA1707(27, 21, "IsPositive_FromSource_ReturnsTrue").WithIsSuppressed(true));
+            await Verifier.VerifyAsync(new Test(), "UTF3005/TestMethods.cs", TestMethodsDiagnostics(suppressed: true));
         }
 
         [Fact]
@@ -52,11 +59,7 @@ namespace UTF.Analyzers.Tests
                 SpecificDiagnosticOptions = ImmutableDictionary<string, ReportDiagnostic>.Empty
                     .Add(UnderscoreInTestMethodNameSuppressor.SuppressionId, ReportDiagnostic.Suppress)
             };
-            await Verifier.VerifyAsync(test, "UTF3005/TestMethods.cs",
-                CA1707(10, 21, "Add_TwoPositiveNumbers_ReturnsSum"),
-                CA1707(15, 28, "LoadScene_SceneExists_IsLoadedAfterOneFrame"),
-                CA1707(22, 21, "IsPositive_PositiveNumber_ReturnsTrue"),
-                CA1707(27, 21, "IsPositive_FromSource_ReturnsTrue"));
+            await Verifier.VerifyAsync(test, "UTF3005/TestMethods.cs", TestMethodsDiagnostics(suppressed: false));
         }
 
         /// <summary>

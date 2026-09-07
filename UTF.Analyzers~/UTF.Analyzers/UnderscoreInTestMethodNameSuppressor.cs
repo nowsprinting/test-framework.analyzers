@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -25,17 +25,8 @@ public sealed class UnderscoreInTestMethodNameSuppressor : DiagnosticSuppressor
 
     public override void ReportSuppressions(SuppressionAnalysisContext context)
     {
-        // Test methods are recognized through the builder interfaces rather than the four well-known attribute types:
-        // NUnit's DefaultTestCaseBuilder.CanBuildFrom uses the same criterion, so derived and user-defined attributes are covered.
-        var compilation = context.Compilation;
-        var builders = new[]
-            {
-                "NUnit.Framework.Interfaces.ITestBuilder", "NUnit.Framework.Interfaces.ISimpleTestBuilder",
-            }
-            .Select(compilation.GetTypeByMetadataName)
-            .OfType<ISymbol>()
-            .ToImmutableHashSet(SymbolEqualityComparer.Default);
-        if (builders.IsEmpty)
+        var testMethods = TestMethodAnalysis.TryCreate(context.Compilation);
+        if (testMethods is null)
         {
             return;
         }
@@ -60,8 +51,7 @@ public sealed class UnderscoreInTestMethodNameSuppressor : DiagnosticSuppressor
 
             var method = context.GetSemanticModel(tree).GetDeclaredSymbol(methodDeclaration, context.CancellationToken);
             // Overrides are not walked: CA1707 skips IsOverride symbols before reporting, so only the method's own attributes matter.
-            if (method is not null && method.GetAttributes().Any(a =>
-                    a.AttributeClass is { } c && c.AllInterfaces.Any(i => builders.Contains(i.OriginalDefinition))))
+            if (method is IMethodSymbol m && testMethods.IsTestMethod(m))
             {
                 context.ReportSuppression(Suppression.Create(Rule, diagnostic));
             }
