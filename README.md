@@ -5,7 +5,7 @@
 [![NuGet](https://img.shields.io/nuget/v/UTFAnalyzers)](https://www.nuget.org/packages/UTFAnalyzers)
 [![openupm](https://img.shields.io/npm/v/com.nowsprinting.test-framework.analyzers?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/com.nowsprinting.test-framework.analyzers/)
 
-This package provides Roslyn analyzers that help you write unit tests using the [Unity Test Framework](https://docs.unity3d.com/Packages/com.unity.test-framework@1.4/manual/index.html).
+This package provides Roslyn analyzers to help you write safer unit tests with the [Unity Test Framework](https://docs.unity3d.com/Packages/com.unity.test-framework@1.4/manual/index.html).
 It diagnoses API usage that could cause Unity Editor freezes or runtime errors before running tests and suggests best practices.
 
 
@@ -22,11 +22,7 @@ The analyzers diagnose against the Unity Test Framework package v1.4.6 as the ba
 UTF v1.4.6 is the last version you can update independently as a UPM package.
 
 Diagnostics remain even if the bug is fixed in UTF v1.5.0 or later.
-If the bug is fixed in the version you are using, suppress the diagnostic in your project via `.globalconfig` or `.editorconfig`:
-
-```ini
-dotnet_diagnostic.UTFxxxx.severity = none
-```
+If the bug is fixed in the version you are using, suppress the diagnostic in your project via `.editorconfig` or `.globalconfig`.
 
 ### Structure (UTF1xxx)
 
@@ -100,11 +96,11 @@ This package is published to both UPM and NuGet. Choose one of the following.
 > Because it's configured via an assembly definition reference file (asmref) to apply across all test assemblies.
 
 > [!TIP]\
-> Installing the UPM package also install the following packages:
+> The UPM package also includes the following:
 > - Unity Test Framework v1.4.6 (dependency)
 > - NUnit.Analyzers v3.9.0 (bundled)
 >
-> The analyzers don't require these. If you do not need them, use the NuGet package instead.
+> UTFAnalyzers does not require either of these. If you do not need them, use the NuGet package instead.
 
 ### Install NuGet package via [NuGetForUnity](https://github.com/GlitchEnzo/NuGetForUnity)
 
