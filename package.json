@@ -1,7 +1,7 @@
 {
   "name": "com.nowsprinting.test-framework.analyzers",
   "description": "Roslyn analyzers that help you write unit tests using the Unity Test Framework",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Koji Hasegawa <hasegawa@hubsys.co.jp> (https://github.com/nowsprinting)",
   "category": "Unity Test Framework",
   "changelogUrl": "https://github.com/nowsprinting/test-framework.analyzers/releases",
