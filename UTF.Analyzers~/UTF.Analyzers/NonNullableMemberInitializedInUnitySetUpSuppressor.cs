@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -64,7 +65,7 @@ public sealed class NonNullableMemberInitializedInUnitySetUpSuppressor : Diagnos
             if (!setUpMethodsByClass.TryGetValue(classDeclaration, out var setUpMethods))
             {
                 setUpMethods = classDeclaration.Members.OfType<MethodDeclarationSyntax>()
-                    .Where(method => IsUnitySetUp(model.GetDeclaredSymbol(method, context.CancellationToken) as IMethodSymbol, unitySetUp, unityOneTimeSetUp))
+                    .Where(method => UnityHookMethodAnalysis.HasEitherAttribute(model.GetDeclaredSymbol(method, context.CancellationToken) as IMethodSymbol, unitySetUp, unityOneTimeSetUp))
                     .ToList();
                 setUpMethodsByClass.Add(classDeclaration, setUpMethods);
             }
@@ -74,25 +75,6 @@ public sealed class NonNullableMemberInitializedInUnitySetUpSuppressor : Diagnos
                 context.ReportSuppression(Suppression.Create(Rule, diagnostic));
             }
         }
-    }
-
-    private static bool IsUnitySetUp(IMethodSymbol? method, INamedTypeSymbol? unitySetUp, INamedTypeSymbol? unityOneTimeSetUp)
-    {
-        // The attribute may sit on a base declaration that this method overrides.
-        for (; method is not null; method = method.OverriddenMethod)
-        {
-            foreach (var attribute in method.GetAttributes())
-            {
-                var attributeClass = attribute.AttributeClass?.OriginalDefinition;
-                if (SymbolEqualityComparer.Default.Equals(attributeClass, unitySetUp) ||
-                    SymbolEqualityComparer.Default.Equals(attributeClass, unityOneTimeSetUp))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     /// <summary>
