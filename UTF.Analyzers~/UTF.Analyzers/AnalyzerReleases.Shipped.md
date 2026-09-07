@@ -25,3 +25,10 @@ UTF5001 | Extensions | Error | ApplyToTest, ApplyToContext, and Wrap must not th
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
+
+## Release 1.1.0
+
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|-------
