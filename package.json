@@ -6,8 +6,7 @@
   "category": "Unity Test Framework",
   "changelogUrl": "https://github.com/nowsprinting/test-framework.analyzers/releases",
   "dependencies": {
-    "com.unity.test-framework": "1.4.6",
-    "nunit.analyzers.unity": "3.9.0"
+    "com.unity.test-framework": "1.4.6"
   },
   "displayName": "UTF Analyzers",
   "documentationUrl": "https://github.com/nowsprinting/test-framework.analyzers",
@@ -17,7 +16,8 @@
     "Documentation~",
     "LICENSE.md*",
     "package.json*",
-    "README.md*"
+    "README.md*",
+    "Third Party Notices.md*"
   ],
   "keywords": [
     "Unity",
