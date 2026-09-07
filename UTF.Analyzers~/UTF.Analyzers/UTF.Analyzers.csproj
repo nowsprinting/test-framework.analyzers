@@ -13,7 +13,7 @@
 
         <!-- NuGet package settings -->
         <IsPackable>true</IsPackable>
-        <PackageId>UTF.Analyzers</PackageId>
+        <PackageId>UTFAnalyzers</PackageId>
         <Version>1.0.0</Version>
         <Authors>Koji Hasegawa</Authors>
         <Copyright>(c) 2026 Koji Hasegawa</Copyright>

@@ -9,7 +9,7 @@
     "com.unity.test-framework": "1.4.6",
     "nunit.analyzers.unity": "3.9.0"
   },
-  "displayName": "UTF.Analyzers",
+  "displayName": "UTF Analyzers",
   "documentationUrl": "https://github.com/nowsprinting/test-framework.analyzers",
   "files": [
     "Documentation~",

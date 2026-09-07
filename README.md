@@ -1,7 +1,9 @@
-# UTF.Analyzers
+# UTF Analyzers
 
 [![Meta file check](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/metacheck.yml/badge.svg)](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/metacheck.yml)
 [![Build](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/build.yml/badge.svg)](https://github.com/nowsprinting/test-framework.analyzers/actions/workflows/build.yml)
+[![NuGet](https://img.shields.io/nuget/v/UTFAnalyzers)](https://www.nuget.org/packages/UTFAnalyzers)
+[![openupm](https://img.shields.io/npm/v/com.nowsprinting.test-framework.analyzers?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/com.nowsprinting.test-framework.analyzers/)
 
 This package provides Roslyn analyzers that help you write unit tests using the [Unity Test Framework](https://docs.unity3d.com/Packages/com.unity.test-framework@1.4/manual/index.html).
 It diagnoses API usage that could cause Unity Editor freezes or runtime errors before running tests and suggests best practices.
@@ -89,7 +91,7 @@ This package is published to both UPM and NuGet. Choose one of the following.
     2. **URL:** `https://package.openupm.com`
     3. **Scope(s):** `com.nowsprinting` and `nunit.analyzers.unity`
 3. Open the Package Manager window (**Window > Package Manager**) and select **My Registries** tab
-4. Select **UTF.Analyzers** and click the **Install** button
+4. Select **UTF Analyzers** and click the **Install** button
 
 > [!TIP]\
 > You do not need to add a reference to the test assembly definition file (asmdef).
@@ -105,7 +107,7 @@ This package is published to both UPM and NuGet. Choose one of the following.
 ### Install NuGet package via [NuGetForUnity](https://github.com/GlitchEnzo/NuGetForUnity)
 
 1. Open the NuGetForUnity window via **NuGet > Manage NuGet Packages**
-2. Search "UTF.Analyzers" and click **Install**
+2. Search "UTFAnalyzers" and click **Install**
 
 
 ## License
