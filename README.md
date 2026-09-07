@@ -5,7 +5,7 @@
 [![NuGet](https://img.shields.io/nuget/v/UTFAnalyzers)](https://www.nuget.org/packages/UTFAnalyzers)
 [![openupm](https://img.shields.io/npm/v/com.nowsprinting.test-framework.analyzers?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/com.nowsprinting.test-framework.analyzers/)
 
-This package provides Roslyn analyzers that help you write unit tests using the [Unity Test Framework](https://docs.unity3d.com/Packages/com.unity.test-framework@1.4/manual/index.html).
+This package provides Roslyn analyzers to help you write safer unit tests with the [Unity Test Framework](https://docs.unity3d.com/Packages/com.unity.test-framework@1.4/manual/index.html).
 It diagnoses API usage that could cause Unity Editor freezes or runtime errors before running tests and suggests best practices.
 
 
