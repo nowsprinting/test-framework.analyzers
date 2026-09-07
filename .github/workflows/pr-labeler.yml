@@ -5,7 +5,7 @@ name: PR Labeler
 
 on:
   pull_request:
-    types: [ opened ]
+    types: [ opened, reopened, synchronize ]
 
 permissions: {}
 
@@ -23,8 +23,6 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: TimonVS/pr-labeler-action@f9c084306ce8b3f488a8f3ee1ccedc6da131d1af # v5
+      - uses: release-drafter/release-drafter/autolabeler@34d80673e067bdc0c24568d3af899c216adcfaa9  # v7.7.0
         with:
-          configuration-path: .github/pr-labeler.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          config-name: release-drafter.yml
