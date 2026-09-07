@@ -120,7 +120,7 @@ MIT License
 Open an issue or create a pull request.
 
 Be grateful if you could label the PR as `enhancement`, `bug`, `chore`, and `documentation`.
-See [PR Labeler settings](.github/pr-labeler.yml) for automatically labeling from the branch name.
+See the `autolabeler` section in [release-drafter settings](.github/release-drafter.yml) for automatically labeling from the branch name.
 
 
 ## How to development

@@ -1,4 +1,0 @@
-enhancement: [ 'feature/*', 'feat/*' ]
-bug: [ 'fix/*', 'hotfix/*' ]
-chore: 'chore/*'
-skip-changelog: 'release/*'
