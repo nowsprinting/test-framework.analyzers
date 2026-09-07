@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace UTF.Analyzers.Tests
+namespace UTF.Analyzers.Tests.StubAnalyzers
 {
     /// <summary>
     /// Reports VSTHRD200 at the identifier of every ordinary method or local function that returns Task or Task&lt;TResult&gt;

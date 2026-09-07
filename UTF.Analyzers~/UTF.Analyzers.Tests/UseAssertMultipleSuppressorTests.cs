@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
+using UTF.Analyzers.Tests.StubAnalyzers;
 using Xunit;
 using Verifier = UTF.Analyzers.Tests.TestDataVerifier<UTF.Analyzers.UseAssertMultipleSuppressor>;
 

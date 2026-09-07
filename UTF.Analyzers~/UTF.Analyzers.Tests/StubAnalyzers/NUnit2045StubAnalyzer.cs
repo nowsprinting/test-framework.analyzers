@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 
-namespace UTF.Analyzers.Tests
+namespace UTF.Analyzers.Tests.StubAnalyzers
 {
     /// <summary>
     /// Reports NUnit2045 at every Assert member invocation so that a suppressor test has something to suppress.
