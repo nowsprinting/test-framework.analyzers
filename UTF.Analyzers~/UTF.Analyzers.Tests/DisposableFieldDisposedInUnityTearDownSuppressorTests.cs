@@ -50,18 +50,10 @@ namespace UTF.Analyzers.Tests
         /// </summary>
         private sealed class Test : Verifier.Test
         {
-            public ImmutableDictionary<string, ReportDiagnostic> SpecificDiagnosticOptions { get; init; } =
-                ImmutableDictionary<string, ReportDiagnostic>.Empty;
-
             protected override IEnumerable<DiagnosticAnalyzer> GetDiagnosticAnalyzers()
             {
                 yield return new CA1001StubAnalyzer();
                 yield return new DisposableFieldDisposedInUnityTearDownSuppressor();
-            }
-
-            protected override CompilationOptions CreateCompilationOptions()
-            {
-                return base.CreateCompilationOptions().WithSpecificDiagnosticOptions(SpecificDiagnosticOptions);
             }
         }
     }
