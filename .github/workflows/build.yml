@@ -6,9 +6,10 @@ name: Build
 on:
   push:
     branches: [master]
-    tags: ['v*']        # required so the workflow fires on release tags → publish job
+    tags: ['v*']        # fires only for tags pushed by a human; tags made by release.yml with GITHUB_TOKEN never fire workflows
   pull_request:
     branches: [master]
+  workflow_dispatch:    # release.yml dispatches this on the new tag → publish job
 
 jobs:
   build:
@@ -16,7 +17,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: write  # octocov comments the coverage report
-      actions: read # Required for octocov in private repo
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
@@ -40,8 +40,15 @@ jobs:
         uses: k1LoW/octocov-action@73d561f65d59e66899ed5c87e4621a913b5d5c20 # v1
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false  # forks cannot write PR comments
 
+      - name: Get package validation baseline version (latest on nuget.org)
+        run: |
+          set -euo pipefail
+          ver=$(curl -sSf https://api.nuget.org/v3-flatcontainer/utfanalyzers/index.json | jq -er '.versions | last')
+          echo "Baseline version: $ver"
+          echo "BASELINE_VERSION=$ver" >> "$GITHUB_ENV"
+
       - name: Pack
-        run: dotnet pack UTF.Analyzers~/UTF.Analyzers/UTF.Analyzers.csproj -c Release
+        run: dotnet pack UTF.Analyzers~/UTF.Analyzers/UTF.Analyzers.csproj -c Release -p:PackageValidationBaselineVersion="$BASELINE_VERSION"
 
       - name: Upload nupkg
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
