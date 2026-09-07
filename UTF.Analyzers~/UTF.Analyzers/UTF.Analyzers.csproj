@@ -23,7 +23,7 @@
         <RepositoryUrl>https://github.com/nowsprinting/test-framework.analyzers.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageTags>Roslyn Analyzer Unity UnityTestFramework NUnit CodeAnalysis RoslynAnalyzer</PackageTags>
-        <Description>Roslyn analyzers for writing unit tests with Unity Test Framework</Description>
+        <Description>Roslyn analyzers that help you write unit tests using the Unity Test Framework</Description>
         <NoPackageAnalysis>true</NoPackageAnalysis>
         <EnablePackageValidation>true</EnablePackageValidation>
 
