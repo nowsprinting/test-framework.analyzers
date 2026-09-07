@@ -57,7 +57,7 @@ public sealed class DisposableFieldDisposedInUnityTearDownSuppressor : Diagnosti
                 context.GetSemanticModel(tree).GetDeclaredSymbol(classDeclaration, context.CancellationToken) as
                     INamedTypeSymbol;
             if (type is not null && type.GetMembers().OfType<IMethodSymbol>().Any(method =>
-                    UnityHookMethodAnalysis.HasEitherAttribute(method, unityTearDown, unityOneTimeTearDown)))
+                    UnityHookMethodAnalysis.HasAnyAttribute(method, unityTearDown, unityOneTimeTearDown)))
             {
                 context.ReportSuppression(Suppression.Create(Rule, diagnostic));
             }

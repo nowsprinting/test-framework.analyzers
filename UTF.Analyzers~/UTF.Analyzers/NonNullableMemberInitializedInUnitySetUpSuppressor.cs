@@ -67,7 +67,7 @@ public sealed class NonNullableMemberInitializedInUnitySetUpSuppressor : Diagnos
             {
                 setUpMethods = classDeclaration.Members.OfType<MethodDeclarationSyntax>()
                     .Where(method =>
-                        UnityHookMethodAnalysis.HasEitherAttribute(
+                        UnityHookMethodAnalysis.HasAnyAttribute(
                             model.GetDeclaredSymbol(method, context.CancellationToken) as IMethodSymbol, unitySetUp,
                             unityOneTimeSetUp))
                     .ToList();
