@@ -7,22 +7,26 @@ template: |
 
 categories:
   - title: '🦑 Features'
-    labels:
-      - 'enhancement'
-      - 'feature'
+    when:
+      labels:
+        - 'enhancement'
+        - 'feature'
   - title: '💔 Breaking Changes'
-    labels:
-      - 'breaking-change'
+    when:
+      labels:
+        - 'breaking-change'
   - title: '🐛 Bug Fixes'
-    labels:
-      - 'bug'
-      - 'bugfix'
-      - 'fix'
+    when:
+      labels:
+        - 'bug'
+        - 'bugfix'
+        - 'fix'
   - title: '🧰 Maintenance'
-    labels:
-      - 'chore'
-      - 'documentation'
-      - 'dependencies'
+    when:
+      labels:
+        - 'chore'
+        - 'documentation'
+        - 'dependencies'
 
 exclude-labels:
   - 'skip-changelog'
