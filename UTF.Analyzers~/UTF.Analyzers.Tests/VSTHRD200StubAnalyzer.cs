@@ -37,31 +37,24 @@ namespace UTF.Analyzers.Tests
             {
                 var task = startContext.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
                 var genericTask = startContext.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
-                startContext.RegisterSymbolAction(
-                    symbolContext => Report((IMethodSymbol)symbolContext.Symbol, symbolContext.ReportDiagnostic),
-                    SymbolKind.Method);
-                // Local functions are not visited by symbol actions; the real rule reaches them through an operation action.
+                // One syntax action covers both shapes; symbol actions never visit local functions.
                 startContext.RegisterSyntaxNodeAction(nodeContext =>
                 {
                     if (nodeContext.SemanticModel.GetDeclaredSymbol(nodeContext.Node, nodeContext.CancellationToken)
-                        is IMethodSymbol localFunction)
+                            is not IMethodSymbol method
+                        || method.Name.EndsWith("Async", StringComparison.Ordinal))
                     {
-                        Report(localFunction, nodeContext.ReportDiagnostic);
+                        return;
                     }
-                }, SyntaxKind.LocalFunctionStatement);
 
-                void Report(IMethodSymbol method, Action<Diagnostic> report)
-                {
                     var returnType = method.ReturnType.OriginalDefinition;
-                    if (method.MethodKind is MethodKind.Ordinary or MethodKind.LocalFunction
-                        && !method.Name.EndsWith("Async")
-                        && (SymbolEqualityComparer.Default.Equals(returnType, task)
-                            || SymbolEqualityComparer.Default.Equals(returnType, genericTask)))
+                    if (SymbolEqualityComparer.Default.Equals(returnType, task)
+                        || SymbolEqualityComparer.Default.Equals(returnType, genericTask))
                     {
                         // The real rule reports at methodSymbol.Locations[0], i.e. the identifier.
-                        report(Diagnostic.Create(Rule, method.Locations[0]));
+                        nodeContext.ReportDiagnostic(Diagnostic.Create(Rule, method.Locations[0]));
                     }
-                }
+                }, SyntaxKind.MethodDeclaration, SyntaxKind.LocalFunctionStatement);
             });
         }
     }
