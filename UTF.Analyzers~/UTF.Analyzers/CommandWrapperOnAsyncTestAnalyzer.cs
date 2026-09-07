@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -38,11 +39,8 @@ public sealed class CommandWrapperOnAsyncTestAnalyzer : DiagnosticAnalyzer
         var compilation = context.Compilation;
         var commandWrapper = compilation.GetTypeByMetadataName("NUnit.Framework.Interfaces.ICommandWrapper");
         var task = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
-        // Test methods are recognized through the builder interfaces rather than a list of attribute names,
-        // so user-defined test builders are covered the same way Unity Test Framework discovers them.
-        var testBuilder = compilation.GetTypeByMetadataName("NUnit.Framework.Interfaces.ITestBuilder");
-        var simpleTestBuilder = compilation.GetTypeByMetadataName("NUnit.Framework.Interfaces.ISimpleTestBuilder");
-        if (commandWrapper is null || task is null || testBuilder is null || simpleTestBuilder is null)
+        var testMethods = TestMethodAnalysis.TryCreate(compilation);
+        if (commandWrapper is null || task is null || testMethods is null)
         {
             return;
         }
@@ -71,16 +69,12 @@ public sealed class CommandWrapperOnAsyncTestAnalyzer : DiagnosticAnalyzer
 
             // Non-test methods such as [SetUp] are not reported: Unity Test Framework reads wrapper attributes only from
             // the test method (TestCommandBuilder), so a wrapper on any other method is inert rather than harmful.
-            var attributes = method.GetAttributes();
-            if (!attributes.Any(a => a.AttributeClass is { } c
-                                     && (c.AllInterfaces.Contains(testBuilder, SymbolEqualityComparer.Default)
-                                         || c.AllInterfaces.Contains(simpleTestBuilder,
-                                             SymbolEqualityComparer.Default))))
+            if (!testMethods.IsTestMethod(method))
             {
                 return;
             }
 
-            foreach (var attribute in attributes)
+            foreach (var attribute in method.GetAttributes())
             {
                 var attributeClass = attribute.AttributeClass;
                 if (attributeClass is null

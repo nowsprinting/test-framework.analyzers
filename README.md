@@ -62,6 +62,7 @@ Suppressions of diagnostics reported by other analyzers that do not apply to Uni
 | [UTF3002](Documentation~/rules/UTF3002.md) | Suppress CS8618 (Non-nullable field or property is uninitialized) when the member is initialized in a UnitySetUp or UnityOneTimeSetUp method |
 | [UTF3003](Documentation~/rules/UTF3003.md) | Suppress CA1001 (Types that own disposable fields should be disposable) on test fixtures with a UnityTearDown or UnityOneTimeTearDown method |
 | [UTF3004](Documentation~/rules/UTF3004.md) | Suppress NUnit1028 (The non-test method is public) on UnitySetUp, UnityOneTimeSetUp, UnityTearDown, and UnityOneTimeTearDown methods |
+| [UTF3005](Documentation~/rules/UTF3005.md) | Suppress CA1707 (Identifiers should not contain underscores) on test methods |
 
 ### Style (UTF4xxx)
 
