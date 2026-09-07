@@ -22,12 +22,15 @@ namespace UTF.Analyzers.Tests
         where TAnalyzer : DiagnosticAnalyzer, new()
     {
         /// <param name="testDataPath">Path relative to TestData/, e.g. "UTF1001/ReturnsList.cs"</param>
+        /// <param name="expected">Diagnostics the analyzer must report on the fixture</param>
         public static Task VerifyAsync(string testDataPath, params DiagnosticResult[] expected)
         {
             return VerifyAsync(new Test(), testDataPath, expected);
         }
 
         /// <param name="test">A subclass instance when the case needs more than the single analyzer, e.g. a suppressor with the analyzer it suppresses</param>
+        /// <param name="testDataPath">Path relative to TestData/, e.g. "UTF1001/ReturnsList.cs"</param>
+        /// <param name="expected">Diagnostics the analyzer must report on the fixture</param>
         public static Task VerifyAsync(Test test, string testDataPath, params DiagnosticResult[] expected)
         {
             test.TestCode = File.ReadAllText(Path.Combine(TestDataFiles.Root, testDataPath));

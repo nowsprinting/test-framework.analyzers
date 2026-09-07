@@ -60,7 +60,8 @@ namespace UTF.Analyzers.Tests.StubAnalyzers
         private static bool IsTestRelated(IMethodSymbol method)
         {
             return method.GetAttributes().Any(attribute =>
-                TestRelatedAttributes.Contains(attribute.AttributeClass?.ToDisplayString()));
+                attribute.AttributeClass is { } attributeClass &&
+                TestRelatedAttributes.Contains(attributeClass.ToDisplayString()));
         }
     }
 }
