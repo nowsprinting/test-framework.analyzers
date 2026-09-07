@@ -45,7 +45,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: read
-      actions: read
+      actions: write # Required for gh workflow run
 
     steps:
       - uses: release-drafter/release-drafter@34d80673e067bdc0c24568d3af899c216adcfaa9  # v7.7.0
@@ -56,3 +56,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # After tagged, openupm.com gets the tag and automatically publishes the UPM package.
+
+      # A tag pushed with GITHUB_TOKEN does not trigger build.yml, so dispatch it explicitly on the tag ref.
+      - name: Trigger build & publish on the new tag
+        run: gh workflow run build.yml -R "${{ github.repository }}" --ref "v${{ needs.check-bump-version.outputs.new-version }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
