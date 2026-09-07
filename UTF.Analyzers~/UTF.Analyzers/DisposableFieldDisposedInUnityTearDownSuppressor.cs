@@ -28,7 +28,8 @@ public sealed class DisposableFieldDisposedInUnityTearDownSuppressor : Diagnosti
     {
         // Looked up independently: UnityOneTimeTearDownAttribute exists only in UTF 1.5.0+, and requiring both would disable the suppressor on 1.4.x.
         var unityTearDown = context.Compilation.GetTypeByMetadataName("UnityEngine.TestTools.UnityTearDownAttribute");
-        var unityOneTimeTearDown = context.Compilation.GetTypeByMetadataName("UnityEngine.TestTools.UnityOneTimeTearDownAttribute");
+        var unityOneTimeTearDown =
+            context.Compilation.GetTypeByMetadataName("UnityEngine.TestTools.UnityOneTimeTearDownAttribute");
         if (unityTearDown is null && unityOneTimeTearDown is null)
         {
             return;
@@ -52,7 +53,9 @@ public sealed class DisposableFieldDisposedInUnityTearDownSuppressor : Diagnosti
             }
 
             // Symbol members rather than syntax members, so a teardown method in another part of a partial class counts.
-            var type = context.GetSemanticModel(tree).GetDeclaredSymbol(classDeclaration, context.CancellationToken) as INamedTypeSymbol;
+            var type =
+                context.GetSemanticModel(tree).GetDeclaredSymbol(classDeclaration, context.CancellationToken) as
+                    INamedTypeSymbol;
             if (type is not null && type.GetMembers().OfType<IMethodSymbol>().Any(method =>
                     UnityHookMethodAnalysis.HasEitherAttribute(method, unityTearDown, unityOneTimeTearDown)))
             {

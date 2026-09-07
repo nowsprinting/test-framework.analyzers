@@ -20,7 +20,8 @@ namespace UTF.Analyzers.Tests
             DiagnosticSeverity.Info,
             isEnabledByDefault: true);
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
+            ImmutableArray.Create(Rule);
 
         public override void Initialize(AnalysisContext context)
         {
@@ -32,7 +33,8 @@ namespace UTF.Analyzers.Tests
                 var disposable = symbolContext.Compilation.GetSpecialType(SpecialType.System_IDisposable);
                 if (type.TypeKind == TypeKind.Class &&
                     type.GetMembers().OfType<IFieldSymbol>().Any(field =>
-                        !field.IsStatic && field.Type.AllInterfaces.Contains(disposable, SymbolEqualityComparer.Default)))
+                        !field.IsStatic &&
+                        field.Type.AllInterfaces.Contains(disposable, SymbolEqualityComparer.Default)))
                 {
                     // NetAnalyzers reports at the type symbol's location, i.e. the identifier.
                     symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, type.Locations[0]));
