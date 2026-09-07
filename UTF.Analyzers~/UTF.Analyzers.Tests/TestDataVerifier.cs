@@ -22,12 +22,15 @@ namespace UTF.Analyzers.Tests
         where TAnalyzer : DiagnosticAnalyzer, new()
     {
         /// <param name="testDataPath">Path relative to TestData/, e.g. "UTF1001/ReturnsList.cs"</param>
+        /// <param name="expected">Diagnostics the analyzer must report on the fixture</param>
         public static Task VerifyAsync(string testDataPath, params DiagnosticResult[] expected)
         {
             return VerifyAsync(new Test(), testDataPath, expected);
         }
 
         /// <param name="test">A subclass instance when the case needs more than the single analyzer, e.g. a suppressor with the analyzer it suppresses</param>
+        /// <param name="testDataPath">Path relative to TestData/, e.g. "UTF1001/ReturnsList.cs"</param>
+        /// <param name="expected">Diagnostics the analyzer must report on the fixture</param>
         public static Task VerifyAsync(Test test, string testDataPath, params DiagnosticResult[] expected)
         {
             test.TestCode = File.ReadAllText(Path.Combine(TestDataFiles.Root, testDataPath));
@@ -52,12 +55,20 @@ namespace UTF.Analyzers.Tests
                 ReferenceAssemblies = ReferenceAssemblies.NetStandard.NetStandard21;
             }
 
+            /// <summary>
+            /// Applied as ruleset / -nowarn options. Suppressor tests use this to verify that disabling the suppression ID
+            /// turns the suppressor off; analyzer config files do not reach suppressors, so they cannot be used for that.
+            /// </summary>
+            public ImmutableDictionary<string, ReportDiagnostic> SpecificDiagnosticOptions { get; init; } =
+                ImmutableDictionary<string, ReportDiagnostic>.Empty;
+
             protected override CompilationOptions CreateCompilationOptions()
             {
                 // The Tests project has Nullable=enable while the verifier defaults to disabled.
                 // Without this, a fixture containing string? builds in the Tests project but fails with CS8632 in the verifier.
                 var options = (CSharpCompilationOptions)base.CreateCompilationOptions();
-                return options.WithNullableContextOptions(NullableContextOptions.Enable);
+                return options.WithNullableContextOptions(NullableContextOptions.Enable)
+                    .WithSpecificDiagnosticOptions(SpecificDiagnosticOptions);
             }
         }
     }

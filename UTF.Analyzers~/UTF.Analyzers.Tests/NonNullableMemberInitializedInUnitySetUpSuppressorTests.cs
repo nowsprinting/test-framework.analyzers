@@ -1,8 +1,6 @@
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
 using Verifier = UTF.Analyzers.Tests.TestDataVerifier<UTF.Analyzers.NonNullableMemberInitializedInUnitySetUpSuppressor>;
@@ -11,6 +9,10 @@ namespace UTF.Analyzers.Tests
 {
     public class NonNullableMemberInitializedInUnitySetUpSuppressorTests
     {
+        // Collecting warnings also surfaces CS1591 (missing XML comment) on every public dummy and fixture member.
+        private static readonly ImmutableDictionary<string, ReportDiagnostic> IgnoreMissingXmlComments =
+            ImmutableDictionary<string, ReportDiagnostic>.Empty.Add("CS1591", ReportDiagnostic.Suppress);
+
         private static DiagnosticResult CS8618(int line, int column)
         {
             // The compiler attaches the same span again as an additional location.
@@ -26,7 +28,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("UTF3002/FieldAssignedInOverriddenUnitySetUp.cs", 15, 24)]
         public async Task AssignedInUnitySetUp_SuppressesCS8618(string path, int line, int column)
         {
-            await Verifier.VerifyAsync(new Test(), path, CS8618(line, column).WithIsSuppressed(true));
+            await Verifier.VerifyAsync(new Test { SpecificDiagnosticOptions = IgnoreMissingXmlComments }, path, CS8618(line, column).WithIsSuppressed(true));
         }
 
         [Theory]
@@ -34,7 +36,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("UTF3002/FieldAssignedInSetUp.cs", 7, 24)]
         public async Task NotAssignedInUnitySetUp_DoesNotSuppress(string path, int line, int column)
         {
-            await Verifier.VerifyAsync(new Test(), path, CS8618(line, column));
+            await Verifier.VerifyAsync(new Test { SpecificDiagnosticOptions = IgnoreMissingXmlComments }, path, CS8618(line, column));
         }
 
         [Fact]
@@ -43,7 +45,7 @@ namespace UTF.Analyzers.Tests
             var test = new Test
             {
                 // Suppressors read only CompilationOptions.SpecificDiagnosticOptions (ruleset / -nowarn), not analyzer config files.
-                SpecificDiagnosticOptions = ImmutableDictionary<string, ReportDiagnostic>.Empty
+                SpecificDiagnosticOptions = IgnoreMissingXmlComments
                     .Add(NonNullableMemberInitializedInUnitySetUpSuppressor.SuppressionId, ReportDiagnostic.Suppress)
             };
             await Verifier.VerifyAsync(test, "UTF3002/FieldAssignedInUnitySetUp.cs", CS8618(9, 24));
@@ -58,16 +60,6 @@ namespace UTF.Analyzers.Tests
             {
                 // The verifier collects only compiler errors by default; CS8618 is a warning.
                 CompilerDiagnostics = CompilerDiagnostics.Warnings;
-            }
-
-            public ImmutableDictionary<string, ReportDiagnostic> SpecificDiagnosticOptions { get; init; } =
-                ImmutableDictionary<string, ReportDiagnostic>.Empty;
-
-            protected override CompilationOptions CreateCompilationOptions()
-            {
-                // Collecting warnings also surfaces CS1591 (missing XML comment) on every public dummy and fixture member.
-                return base.CreateCompilationOptions().WithSpecificDiagnosticOptions(
-                    SpecificDiagnosticOptions.Add("CS1591", ReportDiagnostic.Suppress));
             }
         }
     }

@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace UTF.Analyzers.Tests
+namespace UTF.Analyzers.Tests.StubAnalyzers
 {
     /// <summary>
     /// Reports CA1707 at the identifier of every ordinary method whose name contains an underscore so that a suppressor test

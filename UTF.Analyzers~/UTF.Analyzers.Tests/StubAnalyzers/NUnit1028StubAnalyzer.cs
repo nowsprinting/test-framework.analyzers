@@ -3,7 +3,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace UTF.Analyzers.Tests
+namespace UTF.Analyzers.Tests.StubAnalyzers
 {
     /// <summary>
     /// Reports NUnit1028 at every public ordinary method that is not a test, setup, or teardown method of NUnit, in a class
@@ -60,7 +60,8 @@ namespace UTF.Analyzers.Tests
         private static bool IsTestRelated(IMethodSymbol method)
         {
             return method.GetAttributes().Any(attribute =>
-                TestRelatedAttributes.Contains(attribute.AttributeClass?.ToDisplayString()));
+                attribute.AttributeClass is { } attributeClass &&
+                TestRelatedAttributes.Contains(attributeClass.ToDisplayString()));
         }
     }
 }

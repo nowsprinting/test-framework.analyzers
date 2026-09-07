@@ -74,13 +74,23 @@ Check whether `UTF.Analyzers.Tests/TestDataVerifier.cs` exists.
 1. Review the added/changed test files for duplicates and cases that can be merged into `[Theory]`/`[InlineData]`.
 2. Run the Claude Code built-in `/simplify` skill (`Skill({skill: "simplify"})`, not a plugin skill) and apply the quality improvements to the changed code.
 3. Re-confirm all tests pass with `dotnet test`.
-4. If possible, call `reformat_file` once on every file added or changed in Steps 1–4.<br>
+4. If possible, resolve diagnostics at the `warning` or higher severity level on every file added or changed in Steps 1–4, collecting them via `lint_files` (one call with all files) rather than one file at a time.
+   By default the tools also return `suggestion`- and `hint`-level results — those are out of scope, with one exception: a `suggestion`-level diagnostic related to performance (execution speed, memory allocation, boxing, etc.) should be considered for fixing too, though it never requires suppression when declined.
+   Both `lint_files` and its fallback `get_file_problems` require Rider 2026.2 or later.
+   - If the call errors, fall back to `get_file_problems`, called once per file
+   - On a `timedOut` or `more` result, retry the outstanding file(s) with `get_file_problems`
+   - If a timeout persists, use `AskUserQuestion` to confirm the user is running Rider 2026.2 or later before retrying further
+   - Decide each diagnostic per the `analyzer-code-writing-guide` skill (handling diagnostics), and apply all resulting changes as a single set per file
+   - When a fix is a rename (naming-convention inspections) or a symbol removal (unused-member findings), apply it via `rename_refactoring` / `safe_delete` so references are updated across the solution
+   - Re-confirm all tests pass with `dotnet test` if anything changed<br>
+   **Known limitation**: same as item 5 below — if the connected Rider instance has the Unity solution open, the call fails with `Requested files are not part of the current solution`. In that case skip this item.
+5. If possible, call `reformat_file` once on every file added or changed in Steps 1–4.<br>
    **Known limitation**: `UTF.Analyzers.sln` is meant to be opened in a Rider instance separate from the Unity project.
    If the connected Rider instance has the Unity solution open, the call fails with `Requested files are not part of the current solution`.
    In that case do not force a switch; format by hand to match the conventions of the existing files and skip this item.
-5. Add the row to the "Diagnostics" table in `../README.md` if it is not there yet (normally already added by the `design-diagnostic` skill).
-6. Reflect any decisions from Step 0 that are not yet in the spec file (typically under "Notes" as known limitations).
-7. Commit the remaining changes.
+6. Add the row to the "Diagnostics" table in `../README.md` if it is not there yet (normally already added by the `design-diagnostic` skill).
+7. Reflect any decisions from Step 0 that are not yet in the spec file (typically under "Notes" as known limitations).
+8. Commit the remaining changes.
 
 ## Verification
 

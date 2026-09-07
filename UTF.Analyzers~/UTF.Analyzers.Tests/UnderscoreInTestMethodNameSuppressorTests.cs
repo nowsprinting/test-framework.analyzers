@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
+using UTF.Analyzers.Tests.StubAnalyzers;
 using Xunit;
 using Verifier = UTF.Analyzers.Tests.TestDataVerifier<UTF.Analyzers.UnderscoreInTestMethodNameSuppressor>;
 
@@ -67,18 +68,10 @@ namespace UTF.Analyzers.Tests
         /// </summary>
         private sealed class Test : Verifier.Test
         {
-            public ImmutableDictionary<string, ReportDiagnostic> SpecificDiagnosticOptions { get; init; } =
-                ImmutableDictionary<string, ReportDiagnostic>.Empty;
-
             protected override IEnumerable<DiagnosticAnalyzer> GetDiagnosticAnalyzers()
             {
                 yield return new CA1707StubAnalyzer();
                 yield return new UnderscoreInTestMethodNameSuppressor();
-            }
-
-            protected override CompilationOptions CreateCompilationOptions()
-            {
-                return base.CreateCompilationOptions().WithSpecificDiagnosticOptions(SpecificDiagnosticOptions);
             }
         }
     }

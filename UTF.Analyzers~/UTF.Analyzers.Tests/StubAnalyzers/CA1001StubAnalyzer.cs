@@ -3,7 +3,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace UTF.Analyzers.Tests
+namespace UTF.Analyzers.Tests.StubAnalyzers
 {
     /// <summary>
     /// Reports CA1001 at every class declaring an IDisposable-typed instance field so that a suppressor test has something to suppress.

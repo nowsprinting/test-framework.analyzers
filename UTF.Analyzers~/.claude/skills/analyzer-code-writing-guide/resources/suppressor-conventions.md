@@ -175,12 +175,17 @@ Record in the rule's specification which producer the tests use and why.
 Verify that `-nowarn` / ruleset disabling works by putting the suppressor ID into `SpecificDiagnosticOptions` and expecting the diagnostics
 **without** `.WithIsSuppressed(true)`:
 
+The harness's `Test` type already applies `SpecificDiagnosticOptions` to the compilation, so pass it as an init property
+instead of overriding `CreateCompilationOptions`:
+
 ```csharp
-protected override CompilationOptions CreateCompilationOptions()
+var test = new Test
 {
-    return base.CreateCompilationOptions().WithSpecificDiagnosticOptions(
-        ImmutableDictionary<string, ReportDiagnostic>.Empty.Add(FooSuppressor.SuppressionId, ReportDiagnostic.Suppress));
-}
+    SpecificDiagnosticOptions = ImmutableDictionary<string, ReportDiagnostic>.Empty
+        .Add(FooSuppressor.SuppressionId, ReportDiagnostic.Suppress)
+};
+await Verifier.VerifyAsync(test, "XXX3001/Case.cs",
+    new DiagnosticResult(Other1234Stub.Rule).WithLocation(12, 13));
 ```
 
 Do not try to test `.editorconfig` / `.globalconfig` disabling; it does not work (see above).
