@@ -17,14 +17,13 @@ namespace UTF.Analyzers.Tests
         }
 
         [Theory]
-        [InlineData("UTF3004/PublicUnitySetUpAndTearDown.cs", 10, 28, 16, 28)]
-        [InlineData("UTF3004/PublicUnityOneTimeSetUpAndTearDown.cs", 10, 28, 16, 28)]
-        public async Task UnityHookMethod_SuppressesNUnit1028(string path, int line1, int column1, int line2,
-            int column2)
+        [InlineData("UTF3004/PublicUnitySetUpAndTearDown.cs")]
+        [InlineData("UTF3004/PublicUnityOneTimeSetUpAndTearDown.cs")]
+        public async Task UnityHookMethod_SuppressesNUnit1028(string path)
         {
             await Verifier.VerifyAsync(new Test(), path,
-                NUnit1028(line1, column1).WithIsSuppressed(true),
-                NUnit1028(line2, column2).WithIsSuppressed(true));
+                NUnit1028(10, 28).WithIsSuppressed(true),
+                NUnit1028(16, 28).WithIsSuppressed(true));
         }
 
         [Fact]

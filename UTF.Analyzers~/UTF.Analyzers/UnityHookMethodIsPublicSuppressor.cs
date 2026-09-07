@@ -54,10 +54,11 @@ public sealed class UnityHookMethodIsPublicSuppressor : DiagnosticSuppressor
                 continue;
             }
 
-            var method = context.GetSemanticModel(tree).GetDeclaredSymbol(methodDeclaration, context.CancellationToken) as
-                IMethodSymbol;
-            if (UnityHookMethodAnalysis.HasEitherAttribute(method, unitySetUp, unityOneTimeSetUp) ||
-                UnityHookMethodAnalysis.HasEitherAttribute(method, unityTearDown, unityOneTimeTearDown))
+            var method =
+                context.GetSemanticModel(tree).GetDeclaredSymbol(methodDeclaration, context.CancellationToken) as
+                    IMethodSymbol;
+            if (UnityHookMethodAnalysis.HasAnyAttribute(method, unitySetUp, unityOneTimeSetUp, unityTearDown,
+                    unityOneTimeTearDown))
             {
                 context.ReportSuppression(Suppression.Create(Rule, diagnostic));
             }
