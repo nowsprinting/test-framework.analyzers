@@ -66,7 +66,7 @@ jobs:
       - name: Build and commit analyzer DLL
         run: |
           dotnet build -c Release UTF.Analyzers~/UTF.Analyzers/UTF.Analyzers.csproj
-          git add UTF.Analyzers/UTF.Analyzers.dll
+          git add Analyzers/UTF.Analyzers/UTF.Analyzers.dll
           git commit -m"Build analyzer DLL v${{ steps.next-version.outputs.version }}"
 
       - name: Create pull-request

@@ -89,7 +89,7 @@ This package is published to both UPM and NuGet. Choose one of the following.
 2. Click **+** button under the **Scoped Registries** and enter the following settings:
     1. **Name:** `package.openupm.com`
     2. **URL:** `https://package.openupm.com`
-    3. **Scope(s):** `com.nowsprinting` and `nunit.analyzers.unity`
+    3. **Scope(s):** `com.nowsprinting`
 3. Open the Package Manager window (**Window > Package Manager**) and select **My Registries** tab
 4. Select **UTF Analyzers** and click the **Install** button
 
@@ -98,11 +98,11 @@ This package is published to both UPM and NuGet. Choose one of the following.
 > Because it's configured via an assembly definition reference file (asmref) to apply across all test assemblies.
 
 > [!TIP]\
-> Installing the UPM package will also install the following packages:
-> - Unity Test Framework v1.4.6
-> - NUnit.Analyzers v3.9.0
+> Installing the UPM package also install the following packages:
+> - Unity Test Framework v1.4.6 (dependency)
+> - NUnit.Analyzers v3.9.0 (bundled)
 >
-> These are not required. If you do not need them, install the NuGet package instead.
+> The analyzers don't require these. If you do not need them, use the NuGet package instead.
 
 ### Install NuGet package via [NuGetForUnity](https://github.com/GlitchEnzo/NuGetForUnity)
 
@@ -147,5 +147,5 @@ cd Packages/com.nowsprinting.test-framework.analyzers/UTF.Analyzers~
 dotnet build -c Release UTF.Analyzers
 ```
 
-After the Release build, `UTF.Analyzers.dll` is automatically copied to `UTF.Analyzers/`.
+After the Release build, `UTF.Analyzers.dll` is automatically copied to `Analyzers/UTF.Analyzers/`.
 Please commit the copied DLL; it will be distributed as part of the UPM package.

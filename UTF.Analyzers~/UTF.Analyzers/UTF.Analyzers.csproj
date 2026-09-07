@@ -49,7 +49,7 @@
 
     <!-- Copy only the analyzer dll; OutDir would also drop pdb/deps.json/reference dlls into the Unity package -->
     <Target Name="CopyToUnityPackage" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
-        <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(MSBuildProjectDirectory)/../../UTF.Analyzers/"/>
+        <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(MSBuildProjectDirectory)/../../Analyzers/UTF.Analyzers/"/>
     </Target>
 
 </Project>

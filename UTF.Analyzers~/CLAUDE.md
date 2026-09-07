@@ -15,7 +15,7 @@ The parent directory is the UPM package root.
 - `UTF.Analyzers/` # Analyzer project (netstandard2.0)
 - `UTF.Analyzers.Tests/` # xUnit tests using Microsoft.CodeAnalysis.Testing (net10.0)
 - `UTF.Analyzers.Sample/` # Sample project that references the analyzer for manual verification (net10.0)
-- `../UTF.Analyzers/` # UPM-facing directory. Contains the built `UTF.Analyzers.dll` and an `.asmref` to `UnityEngine.TestRunner`
+- `../Analyzers/UTF.Analyzers/` # UPM-facing directory. Contains the built `UTF.Analyzers.dll` and an `.asmref` to `UnityEngine.TestRunner`
 - `../Documentation~/` # Package documentation published to https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/
 
 ## Test Project Policy
@@ -54,7 +54,7 @@ Build the analyzer in Release configuration:
 dotnet build -c Release UTF.Analyzers
 ```
 
-The `CopyToUnityPackage` target in `UTF.Analyzers.csproj` copies `UTF.Analyzers.dll` into `../UTF.Analyzers/` after a Release build.
+The `CopyToUnityPackage` target in `UTF.Analyzers.csproj` copies `UTF.Analyzers.dll` into `../Analyzers/UTF.Analyzers/` after a Release build.
 Commit the copied dll; it is what the UPM package ships.
 Do not commit `bin/` or `obj/`.
 
