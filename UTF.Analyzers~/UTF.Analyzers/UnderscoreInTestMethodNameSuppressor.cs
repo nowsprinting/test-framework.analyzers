@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using UTF.Analyzers.Utilities;
 
@@ -25,36 +24,8 @@ public sealed class UnderscoreInTestMethodNameSuppressor : DiagnosticSuppressor
 
     public override void ReportSuppressions(SuppressionAnalysisContext context)
     {
-        var testMethods = TestMethodAnalysis.TryCreate(context.Compilation);
-        if (testMethods is null)
-        {
-            return;
-        }
-
-        foreach (var diagnostic in context.ReportedDiagnostics)
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-
-            var tree = diagnostic.Location.SourceTree;
-            if (tree is null)
-            {
-                continue;
-            }
-
-            // CA1707 reports at the symbol's location, i.e. the method identifier, whose enclosing node is the method declaration.
-            // Reports on types, fields, and parameters resolve to other nodes and fall through.
-            var node = tree.GetRoot(context.CancellationToken).FindNode(diagnostic.Location.SourceSpan);
-            if (node is not MethodDeclarationSyntax methodDeclaration)
-            {
-                continue;
-            }
-
-            var method = context.GetSemanticModel(tree).GetDeclaredSymbol(methodDeclaration, context.CancellationToken);
-            // Overrides are not walked: CA1707 skips IsOverride symbols before reporting, so only the method's own attributes matter.
-            if (method is IMethodSymbol m && testMethods.IsTestMethod(m))
-            {
-                context.ReportSuppression(Suppression.Create(Rule, diagnostic));
-            }
-        }
+        // CA1707 reports at the symbol location (the identifier) and skips overrides and interface implementations.
+        // Reports on types, fields, and parameters fall through.
+        TestMethodAnalysis.ReportSuppressionsOnTestMethods(context, Rule);
     }
 }

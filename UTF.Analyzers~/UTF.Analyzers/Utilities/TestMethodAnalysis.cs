@@ -1,5 +1,7 @@
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace UTF.Analyzers.Utilities;
 
@@ -34,5 +36,42 @@ internal sealed class TestMethodAnalysis
                                                && (c.AllInterfaces.Contains(_testBuilder, SymbolEqualityComparer.Default)
                                                    || c.AllInterfaces.Contains(_simpleTestBuilder,
                                                        SymbolEqualityComparer.Default)));
+    }
+
+    /// <summary>
+    /// Suppresses every reported diagnostic located at the identifier of a test method. The suppressed rule must report at
+    /// the method identifier and must skip overrides itself: reports on other nodes (local functions, types, fields,
+    /// parameters) fall through, and overridden declarations are not walked.
+    /// </summary>
+    public static void ReportSuppressionsOnTestMethods(SuppressionAnalysisContext context, SuppressionDescriptor rule)
+    {
+        var testMethods = TryCreate(context.Compilation);
+        if (testMethods is null)
+        {
+            return;
+        }
+
+        foreach (var diagnostic in context.ReportedDiagnostics)
+        {
+            context.CancellationToken.ThrowIfCancellationRequested();
+
+            var tree = diagnostic.Location.SourceTree;
+            if (tree is null)
+            {
+                continue;
+            }
+
+            var node = tree.GetRoot(context.CancellationToken).FindNode(diagnostic.Location.SourceSpan);
+            if (node is not MethodDeclarationSyntax methodDeclaration)
+            {
+                continue;
+            }
+
+            var method = context.GetSemanticModel(tree).GetDeclaredSymbol(methodDeclaration, context.CancellationToken);
+            if (method is IMethodSymbol m && testMethods.IsTestMethod(m))
+            {
+                context.ReportSuppression(Suppression.Create(rule, diagnostic));
+            }
+        }
     }
 }
