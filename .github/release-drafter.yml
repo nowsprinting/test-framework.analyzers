@@ -7,11 +7,13 @@ template: |
 
 categories:
   - title: '🦑 Features'
+    semver-increment: minor
     when:
       labels:
         - 'enhancement'
         - 'feature'
   - title: '💔 Breaking Changes'
+    semver-increment: major
     when:
       labels:
         - 'breaking-change'
@@ -27,6 +29,18 @@ categories:
         - 'chore'
         - 'documentation'
         - 'dependencies'
+  - type: version-resolver
+    semver-increment: major
+    when:
+      labels:
+        - 'major'
+  - type: version-resolver
+    semver-increment: minor
+    when:
+      labels:
+        - 'minor'
+  - type: version-resolver # No 'when' means the default increment
+    semver-increment: patch
 
 exclude-labels:
   - 'skip-changelog'
@@ -34,21 +48,6 @@ exclude-labels:
 category-template: '### $TITLE'
 change-template: '- $TITLE by @$AUTHOR in #$NUMBER'
 change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
-
-version-resolver:
-  major:
-    labels:
-      - 'major'
-      - 'breaking-change'
-  minor:
-    labels:
-      - 'minor'
-      - 'enhancement'
-      - 'feature'
-  patch:
-    labels:
-      - 'patch'
-  default: patch
 
 autolabeler:
   - label: 'enhancement'
