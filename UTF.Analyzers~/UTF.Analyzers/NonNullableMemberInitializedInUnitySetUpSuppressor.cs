@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -28,7 +29,8 @@ public sealed class NonNullableMemberInitializedInUnitySetUpSuppressor : Diagnos
     {
         // Looked up independently: UnityOneTimeSetUpAttribute exists only in UTF 1.5.0+, and requiring both would disable the suppressor on 1.4.x.
         var unitySetUp = context.Compilation.GetTypeByMetadataName("UnityEngine.TestTools.UnitySetUpAttribute");
-        var unityOneTimeSetUp = context.Compilation.GetTypeByMetadataName("UnityEngine.TestTools.UnityOneTimeSetUpAttribute");
+        var unityOneTimeSetUp =
+            context.Compilation.GetTypeByMetadataName("UnityEngine.TestTools.UnityOneTimeSetUpAttribute");
         if (unitySetUp is null && unityOneTimeSetUp is null)
         {
             return;
@@ -64,7 +66,10 @@ public sealed class NonNullableMemberInitializedInUnitySetUpSuppressor : Diagnos
             if (!setUpMethodsByClass.TryGetValue(classDeclaration, out var setUpMethods))
             {
                 setUpMethods = classDeclaration.Members.OfType<MethodDeclarationSyntax>()
-                    .Where(method => IsUnitySetUp(model.GetDeclaredSymbol(method, context.CancellationToken) as IMethodSymbol, unitySetUp, unityOneTimeSetUp))
+                    .Where(method =>
+                        UnityHookMethodAnalysis.HasEitherAttribute(
+                            model.GetDeclaredSymbol(method, context.CancellationToken) as IMethodSymbol, unitySetUp,
+                            unityOneTimeSetUp))
                     .ToList();
                 setUpMethodsByClass.Add(classDeclaration, setUpMethods);
             }
@@ -74,25 +79,6 @@ public sealed class NonNullableMemberInitializedInUnitySetUpSuppressor : Diagnos
                 context.ReportSuppression(Suppression.Create(Rule, diagnostic));
             }
         }
-    }
-
-    private static bool IsUnitySetUp(IMethodSymbol? method, INamedTypeSymbol? unitySetUp, INamedTypeSymbol? unityOneTimeSetUp)
-    {
-        // The attribute may sit on a base declaration that this method overrides.
-        for (; method is not null; method = method.OverriddenMethod)
-        {
-            foreach (var attribute in method.GetAttributes())
-            {
-                var attributeClass = attribute.AttributeClass?.OriginalDefinition;
-                if (SymbolEqualityComparer.Default.Equals(attributeClass, unitySetUp) ||
-                    SymbolEqualityComparer.Default.Equals(attributeClass, unityOneTimeSetUp))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     /// <summary>
@@ -150,7 +136,8 @@ public sealed class NonNullableMemberInitializedInUnitySetUpSuppressor : Diagnos
                     // Only methods of the same type are followed; the containing-type check comes first because it is cheaper than realizing the syntax.
                     return _model.GetSymbolInfo(invocation).Symbol is IMethodSymbol callee &&
                            SymbolEqualityComparer.Default.Equals(callee.ContainingType, _member.ContainingType) &&
-                           callee.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is MethodDeclarationSyntax declaration &&
+                           callee.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is MethodDeclarationSyntax
+                               declaration &&
                            IsAssignedIn(declaration);
                 default:
                     return false;
