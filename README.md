@@ -18,11 +18,15 @@ It diagnoses API usage that could cause Unity Editor freezes or runtime errors b
 
 ### Baseline version
 
-The analyzers diagnose against the Unity Test Framework package v1.4.6 as the baseline; they do not diagnose bugs that exist only in earlier versions.
+The analyzers diagnose against the Unity Test Framework package v1.4.6 as the baseline.
 UTF v1.4.6 is the last version you can update independently as a UPM package.
 
-Diagnostics remain even if the bug is fixed in UTF v1.5.0 or later.
-If the bug is fixed in the version you are using, suppress the diagnostic in your project via `.editorconfig` or `.globalconfig`.
+> [!CAUTION]\
+> Versions earlier than the baseline have bugs that these analyzers do not diagnose. Update to UTF v1.4.6 or later.
+
+> [!TIP]\
+> Diagnostics remain even if the bug is fixed in UTF v1.5.0 or later.
+> If the bug is fixed in the version you are using, suppress the diagnostic in your project via `.editorconfig` or `.globalconfig`.
 
 ### Structure (UTF1xxx)
 
@@ -98,7 +102,7 @@ This package is published to both UPM and NuGet. Choose one of the following.
 > [!TIP]\
 > The UPM package also includes the following:
 > - Unity Test Framework v1.4.6 (dependency)
-> - NUnit.Analyzers v3.9.0 (bundled)
+> - [NUnit.Analyzers](https://www.nuget.org/packages/NUnit.Analyzers) v3.9.0 (bundled)
 >
 > UTFAnalyzers does not require either of these. If you do not need them, use the NuGet package instead.
 
