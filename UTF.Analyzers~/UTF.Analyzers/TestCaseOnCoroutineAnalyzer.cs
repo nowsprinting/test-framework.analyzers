@@ -16,7 +16,7 @@ public sealed class TestCaseOnCoroutineAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
         title: "TestCase and TestCaseSource attributes are not supported on coroutine-style test methods",
-        messageFormat: "'{0}' is not supported on coroutine-style test methods. Use an 'async Task' test method instead.",
+        messageFormat: "'{0}' is not supported on coroutine-style test methods: the test never runs. Use an 'async Task' test method instead.",
         category: "Structure",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,

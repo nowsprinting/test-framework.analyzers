@@ -16,7 +16,7 @@ public sealed class CombiningStrategyOnCoroutineAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
         title: "Pairwise, Sequential, and Combinatorial attributes are not supported on coroutine-style test methods",
-        messageFormat: "'{0}' cannot be used on coroutine-style test methods. Use an 'async Task' test method instead.",
+        messageFormat: "'{0}' is not supported on coroutine-style test methods: its test cases never run. Use an 'async Task' test method instead.",
         category: "Structure",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,

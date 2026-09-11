@@ -18,7 +18,7 @@ public sealed class GenericTaskTestMethodAnalyzer : DiagnosticAnalyzer
         DiagnosticId,
         title: "Task<TResult> is not supported as a test method return type",
         messageFormat:
-        "'{0}' is not supported as a test method return type. Return 'Task' and assert the value inside the test method instead of using ExpectedResult.",
+        "'{0}' is not supported as a test method return type: the Editor freezes. Return 'Task' and assert the value inside the test method instead of using ExpectedResult.",
         category: "Structure",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,

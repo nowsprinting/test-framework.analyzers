@@ -16,7 +16,7 @@ public sealed class AsyncOneTimeSetUpTearDownAnalyzer : DiagnosticAnalyzer
         DiagnosticId,
         title: "OneTimeSetUp and OneTimeTearDown attributes are not supported on async methods",
         messageFormat:
-        "'{0}' is not supported on methods that return Task or have the async modifier. Use '{1}' with a coroutine-style test method instead.",
+        "'{0}' is not supported on methods that return Task or have the async modifier: the Editor freezes or the fixture fails. Use '{1}' with a coroutine-style method instead.",
         category: "Structure",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
