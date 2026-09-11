@@ -14,7 +14,7 @@
         <!-- NuGet package settings -->
         <IsPackable>true</IsPackable>
         <PackageId>UTFAnalyzers</PackageId>
-        <Version>1.1.0</Version>
+        <Version>1.1.1</Version>
         <Authors>Koji Hasegawa</Authors>
         <Copyright>(c) 2026 Koji Hasegawa</Copyright>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
