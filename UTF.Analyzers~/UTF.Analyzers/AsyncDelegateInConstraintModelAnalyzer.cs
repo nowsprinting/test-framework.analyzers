@@ -18,7 +18,7 @@ public sealed class AsyncDelegateInConstraintModelAnalyzer : DiagnosticAnalyzer
         DiagnosticId,
         title: "Async delegates are not supported as the actual value of the constraint model",
         messageFormat:
-        "Async delegates are not supported as the actual value of '{0}'. Await the operation in an async test method and assert on its result instead.",
+        "Async delegates are not supported as the actual value of '{0}': the Editor freezes or the assertion fails. Await the operation in an async test method and assert on its result instead.",
         category: "Assertion",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,

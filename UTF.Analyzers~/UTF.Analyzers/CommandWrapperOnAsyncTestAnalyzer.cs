@@ -17,7 +17,7 @@ public sealed class CommandWrapperOnAsyncTestAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
         title: "Attributes implementing ICommandWrapper are not supported on async and coroutine-style test methods",
-        messageFormat: "'{0}' is not supported on async and coroutine-style test methods",
+        messageFormat: "'{0}' is not supported on async and coroutine-style test methods: the test fails without running. Apply it to synchronous test methods only.",
         category: "Structure",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,

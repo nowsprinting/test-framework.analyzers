@@ -19,7 +19,7 @@ public sealed class NonTestDelegateInAllocatingGCMemoryAnalyzer : DiagnosticAnal
         DiagnosticId,
         title: "Only TestDelegate is supported as the actual value of the AllocatingGCMemory constraint",
         messageFormat:
-        "Only TestDelegate is supported as the actual value of the AllocatingGCMemory constraint, but the actual value is '{0}'. Use a lambda with a block body that returns nothing, or a method group of a void method.",
+        "Only TestDelegate is supported as the actual value of the AllocatingGCMemory constraint, but the actual value is '{0}': the assertion fails at run time. Use a lambda with a block body that returns nothing, or a method group of a void method.",
         category: "Assertion",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,

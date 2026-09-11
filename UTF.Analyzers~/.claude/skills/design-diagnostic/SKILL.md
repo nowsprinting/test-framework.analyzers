@@ -43,6 +43,8 @@ Create `../Documentation~/rules/<DIAGNOSTIC_ID>.md` based on `assets/TEMPLATE.md
 - Title and message: no backticks. Quote identifiers with single quotes, like Roslyn: `Type '{0}' owns disposable field(s)`
 - Title and message name the attributes they target (e.g. "TestCase and TestCaseSource attributes are not supported on ..."), not a category such as "method-level parameterized tests"
 - When the title enumerates the types it targets (attributes, return types), the message outputs the type actually specified in the code as `'{0}'`, e.g. `'{0}' is not supported on coroutine-style test methods.` for `TestCaseAttribute`, or `'{0}' is not supported as a test method return type.` for `Task<int>`
+- The message states the consequence, especially for Error severity: one clause naming what happens, not the mechanism, e.g. "the test freezes the Editor", "the test fails at run time", "the test never runs". Keep the details for the Motivation section
+- When an alternative exists, the message ends with it as an imperative sentence, e.g. `Use an 'async Task' test method instead.` The title stays short and names only the problem
 
 #### Choosing the default severity
 

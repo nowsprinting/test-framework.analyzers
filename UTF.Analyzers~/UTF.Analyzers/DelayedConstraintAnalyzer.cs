@@ -20,7 +20,7 @@ public sealed class DelayedConstraintAnalyzer : DiagnosticAnalyzer
         DiagnosticId,
         title: "DelayedConstraint is not supported",
         messageFormat:
-        "DelayedConstraint is not supported. Wait for the condition in a coroutine-style or 'async Task' test method and assert afterwards.",
+        "DelayedConstraint is not supported: the Editor stalls and the condition never changes. Wait for the condition in a coroutine-style or 'async Task' test method and assert afterwards.",
         category: "Assertion",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,

@@ -20,7 +20,7 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
         title: "ApplyToTest, ApplyToContext, and Wrap must not throw exceptions",
-        messageFormat: "'{0}' must not throw exceptions",
+        messageFormat: "'{0}' must not throw exceptions: the fixture is discarded or the test run aborts. Set RunState to NotRunnable in ApplyToTest instead.",
         category: "Extensions",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
