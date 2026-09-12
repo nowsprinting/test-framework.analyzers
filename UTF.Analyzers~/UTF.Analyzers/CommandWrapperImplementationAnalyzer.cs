@@ -1,9 +1,9 @@
 using System.Collections.Immutable;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -40,25 +40,17 @@ public sealed class CommandWrapperImplementationAnalyzer : DiagnosticAnalyzer
         var compilation = context.Compilation;
         var wrapTestMethod = compilation.GetTypeByMetadataName("NUnit.Framework.Interfaces.IWrapTestMethod");
         var wrapSetUpTearDown = compilation.GetTypeByMetadataName("NUnit.Framework.Interfaces.IWrapSetUpTearDown");
-        if (wrapTestMethod is null && wrapSetUpTearDown is null)
+        if (wrapTestMethod is null || wrapSetUpTearDown is null)
         {
             return;
         }
 
-        // The analyzer is attached to UnityEngine.TestRunner through an .asmref, so ParametrizedIgnoreAttribute, compiled
-        // from the package source, would be reported in every project. The NUnit attributes are precompiled and never
-        // inspected in Unity; they are listed so that the exemption agrees with UTF1005.
-        // A null entry (type not referenced) never equals a class symbol, so no filtering is needed.
-        var exempt = new[]
-        {
-            compilation.GetTypeByMetadataName("NUnit.Framework.RepeatAttribute"),
-            compilation.GetTypeByMetadataName("NUnit.Framework.RetryAttribute"),
-            compilation.GetTypeByMetadataName("NUnit.Framework.MaxTimeAttribute"),
-            compilation.GetTypeByMetadataName("UnityEngine.TestTools.ParametrizedIgnoreAttribute"),
-        };
+        // The supported wrappers are exempt because this package attaches the analyzer to UnityEngine.TestRunner through
+        // an .asmref, so ParametrizedIgnoreAttribute, compiled from the package source, would otherwise be reported in every project.
+        var exempt = CommandWrapperAnalysis.SupportedWrapperAttributes(compilation);
 
         // A syntax node action on the base list entry rather than a symbol action on the class: the location is the entry
-        // that names the interface, and a symbol action would have to re-resolve every base type syntax of every declaration.
+        // that names the interface, and locating it from a symbol action needs Compilation.GetSemanticModel (RS1030).
         context.RegisterSyntaxNodeAction(nodeContext =>
         {
             nodeContext.CancellationToken.ThrowIfCancellationRequested();
@@ -68,19 +60,17 @@ public sealed class CommandWrapperImplementationAnalyzer : DiagnosticAnalyzer
                 return;
             }
 
+            // The interface check excludes the base class entry: a class that inherits the interface from its base class
+            // does not name it, and the base class is reported instead.
             if (nodeContext.SemanticModel.GetTypeInfo(baseType.Type, nodeContext.CancellationToken).Type is not
-                INamedTypeSymbol { TypeKind: TypeKind.Interface } named)
-            {
-                return;
-            }
-
-            if (!IsOrDerivesFrom(named, wrapTestMethod) && !IsOrDerivesFrom(named, wrapSetUpTearDown))
+                    INamedTypeSymbol { TypeKind: TypeKind.Interface } named
+                || !IsWrapperInterface(named, wrapTestMethod, wrapSetUpTearDown))
             {
                 return;
             }
 
             var declared = nodeContext.SemanticModel.GetDeclaredSymbol(classDeclaration, nodeContext.CancellationToken);
-            if (exempt.Contains(declared, SymbolEqualityComparer.Default))
+            if (declared is not null && exempt.Contains(declared))
             {
                 return;
             }
@@ -89,10 +79,30 @@ public sealed class CommandWrapperImplementationAnalyzer : DiagnosticAnalyzer
         }, SyntaxKind.SimpleBaseType);
     }
 
-    private static bool IsOrDerivesFrom(INamedTypeSymbol candidate, INamedTypeSymbol? target)
+    private static bool IsWrapperInterface(INamedTypeSymbol candidate, INamedTypeSymbol wrapTestMethod,
+        INamedTypeSymbol wrapSetUpTearDown)
     {
-        return target is not null
-               && (SymbolEqualityComparer.Default.Equals(candidate, target)
-                   || candidate.AllInterfaces.Contains(target, SymbolEqualityComparer.Default));
+        if (IsEither(candidate, wrapTestMethod, wrapSetUpTearDown))
+        {
+            return true;
+        }
+
+        // A single pass over AllInterfaces instead of two LINQ Contains calls: every base list entry in the compilation
+        // reaches here, and the LINQ overloads box the ImmutableArray on each call.
+        foreach (var inherited in candidate.AllInterfaces)
+        {
+            if (IsEither(inherited, wrapTestMethod, wrapSetUpTearDown))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsEither(INamedTypeSymbol candidate, INamedTypeSymbol first, INamedTypeSymbol second)
+    {
+        return SymbolEqualityComparer.Default.Equals(candidate, first)
+               || SymbolEqualityComparer.Default.Equals(candidate, second);
     }
 }

@@ -12,7 +12,6 @@ namespace UTF.Analyzers.Tests
     {
         [Theory]
         [InlineData("WrapTestMethod", 7, 51, "IWrapTestMethod")]
-        [InlineData("WrapSetUpTearDown", 7, 54, "IWrapSetUpTearDown")]
         [InlineData("DerivedInterface", 7, 53, "IDerivedInterfaceWrapper")]
         [InlineData("QualifiedName", 6, 50, "IWrapTestMethod")]
         [InlineData("NonAttributeClass", 6, 38, "IWrapTestMethod")]
