@@ -18,6 +18,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("PartialClass", 12, 41, Test, TestMethods)]
         [InlineData("OverridesSourceBase", 7, 18, Test, TestMethods)]
         [InlineData("SuiteAllowsMethod", 8, 54, Suite, SuiteTargets)]
+        [InlineData("QualifiedTargets", 8, 53, Suite, SuiteTargets)]
         [InlineData("DefaultFromTestActionAttribute", 7, 18, "'ActionTargets.Default'", SuiteTargets)]
         [InlineData("BothFlagsNoUsage", 7, 53, "'ActionTargets.Test | ActionTargets.Suite'", "test methods, fixture classes, interfaces, and assemblies")]
         [InlineData("UnknownMember", 7, 50, "not a constant", "test methods and fixture classes")]
