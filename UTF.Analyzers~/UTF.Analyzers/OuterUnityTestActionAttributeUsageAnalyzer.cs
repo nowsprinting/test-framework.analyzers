@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -56,7 +57,7 @@ public sealed class OuterUnityTestActionAttributeUsageAnalyzer : DiagnosticAnaly
             if (entry.Parent?.Parent is not ClassDeclarationSyntax classDeclaration
                 || nodeContext.SemanticModel.GetTypeInfo(entry.Type, nodeContext.CancellationToken).Type is not
                     INamedTypeSymbol { TypeKind: TypeKind.Interface } named
-                || !IsOrDerivesFrom(named, outerAction)
+                || !ActionAttributeAnalysis.IsOrDerivesFrom(named, outerAction)
                 || nodeContext.SemanticModel.GetDeclaredSymbol(classDeclaration, nodeContext.CancellationToken) is not { } symbol
                 || !ShouldReport(symbol, outerAction, attribute, attributeUsage))
             {
@@ -70,7 +71,7 @@ public sealed class OuterUnityTestActionAttributeUsageAnalyzer : DiagnosticAnaly
         {
             symbolContext.CancellationToken.ThrowIfCancellationRequested();
             var symbol = (INamedTypeSymbol)symbolContext.Symbol;
-            if (symbol.TypeKind != TypeKind.Class || NamesInterface(symbol, outerAction)
+            if (symbol.TypeKind != TypeKind.Class || ActionAttributeAnalysis.NamesInterface(symbol, outerAction)
                 || !ShouldReport(symbol, outerAction, attribute, attributeUsage))
             {
                 return;
@@ -83,79 +84,8 @@ public sealed class OuterUnityTestActionAttributeUsageAnalyzer : DiagnosticAnaly
     private static bool ShouldReport(INamedTypeSymbol symbol, INamedTypeSymbol outerAction, INamedTypeSymbol attribute,
         INamedTypeSymbol attributeUsage)
     {
-        return DerivesFrom(symbol, attribute)
-               && Implements(symbol, outerAction)
-               && (EffectiveValidOn(symbol, attributeUsage) & ~AttributeTargets.Method) != 0;
-    }
-
-    private static bool DerivesFrom(INamedTypeSymbol symbol, INamedTypeSymbol attribute)
-    {
-        for (var type = symbol.BaseType; type is not null; type = type.BaseType)
-        {
-            if (SymbolEqualityComparer.Default.Equals(type, attribute))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static bool IsOrDerivesFrom(INamedTypeSymbol candidate, INamedTypeSymbol outerAction)
-    {
-        return SymbolEqualityComparer.Default.Equals(candidate, outerAction) || Implements(candidate, outerAction);
-    }
-
-    private static bool Implements(INamedTypeSymbol symbol, INamedTypeSymbol outerAction)
-    {
-        // foreach instead of the LINQ Contains overload: every named type and base list entry in the compilation reaches
-        // here, and the LINQ overload boxes the ImmutableArray on each call.
-        foreach (var inherited in symbol.AllInterfaces)
-        {
-            if (SymbolEqualityComparer.Default.Equals(inherited, outerAction))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Whether the class's own base list (any declaration) names the interface or an interface derived from it.
-    /// </summary>
-    private static bool NamesInterface(INamedTypeSymbol symbol, INamedTypeSymbol outerAction)
-    {
-        foreach (var declared in symbol.Interfaces)
-        {
-            if (IsOrDerivesFrom(declared, outerAction))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// The AttributeUsage the compiler applies: the class's own, else the nearest base class's, else All.
-    /// Roslyn's GetAttributeUsageInfo is internal, so the base chain is walked here.
-    /// </summary>
-    private static AttributeTargets EffectiveValidOn(INamedTypeSymbol symbol, INamedTypeSymbol attributeUsage)
-    {
-        for (var type = symbol; type is not null; type = type.BaseType)
-        {
-            foreach (var data in type.GetAttributes())
-            {
-                if (SymbolEqualityComparer.Default.Equals(data.AttributeClass, attributeUsage)
-                    && data.ConstructorArguments.Length == 1
-                    && data.ConstructorArguments[0].Value is int validOn)
-                {
-                    return (AttributeTargets)validOn;
-                }
-            }
-        }
-
-        return AttributeTargets.All;
+        return ActionAttributeAnalysis.DerivesFrom(symbol, attribute)
+               && ActionAttributeAnalysis.Implements(symbol, outerAction)
+               && (ActionAttributeAnalysis.EffectiveValidOn(symbol, attributeUsage) & ~AttributeTargets.Method) != 0;
     }
 }
