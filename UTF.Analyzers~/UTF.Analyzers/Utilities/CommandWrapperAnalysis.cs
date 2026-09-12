@@ -12,7 +12,7 @@ internal static class CommandWrapperAnalysis
 {
     // Unity Test Framework substitutes the commands produced by the NUnit attributes by exact type name
     // (TryReplaceWithEnumerableCommand), and ParametrizedIgnoreAttribute produces an internal command that implements
-    // IEnumerableTestMethodCommand. Callers therefore match by exact type as well; a derived attribute is reported.
+    // IEnumerableTestMethodCommand. Callers therefore match by exact type as well, and a derived attribute is not exempt.
     private static readonly string[] SupportedWrapperAttributeNames =
     {
         "NUnit.Framework.RepeatAttribute",
