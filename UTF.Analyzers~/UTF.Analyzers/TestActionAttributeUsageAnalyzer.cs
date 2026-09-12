@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 using UTF.Analyzers.Utilities;
@@ -27,7 +27,8 @@ public sealed class TestActionAttributeUsageAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description:
         "Detects an attribute class that implements NUnit.Framework.ITestAction and whose effective AttributeUsage allows a target from which Unity Test Framework does not run the action for the attribute's Targets value. The supported targets are AttributeTargets.Method when Targets is ActionTargets.Test, and AttributeTargets.Class, AttributeTargets.Interface, and AttributeTargets.Assembly when Targets is ActionTargets.Suite or ActionTargets.Default. Without the restriction, the compiler accepts the attribute on an unsupported target, and the action is silently skipped there.",
-        helpLinkUri: "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF5004.md");
+        helpLinkUri: "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF5004.md",
+        customTags: WellKnownDiagnosticTags.CompilationEnd);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
@@ -59,7 +60,7 @@ public sealed class TestActionAttributeUsageAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var targetsProperty = FindTargetsProperty(testAction);
+        var targetsProperty = testAction.GetMembers("Targets").OfType<IPropertySymbol>().FirstOrDefault();
         if (targetsProperty is null)
         {
             return;
@@ -71,42 +72,40 @@ public sealed class TestActionAttributeUsageAnalyzer : DiagnosticAnalyzer
         // be declared in another file, and the constant is only known once that getter's operation block has been analyzed.
         // A symbol-start action per type cannot wait for another type's block. The cost is that the diagnostics appear on
         // build and on full-solution analysis, not in the IDE's open-files mode.
-        var targetsByGetter = new ConcurrentDictionary<IMethodSymbol, int>(SymbolEqualityComparer.Default);
+        var targetsByProperty = new ConcurrentDictionary<IPropertySymbol, int>(SymbolEqualityComparer.Default);
         var entryByType = new ConcurrentDictionary<INamedTypeSymbol, Location>(SymbolEqualityComparer.Default);
         var candidates = new ConcurrentBag<INamedTypeSymbol>();
 
-        context.RegisterOperationBlockStartAction(blockContext =>
+        context.RegisterOperationBlockAction(blockContext =>
         {
             blockContext.CancellationToken.ThrowIfCancellationRequested();
-            if (blockContext.OwningSymbol is not IMethodSymbol { MethodKind: MethodKind.PropertyGet, AssociatedSymbol: IPropertySymbol property } getter
-                || !ImplementsTargets(property, targetsProperty))
+            if (blockContext.OwningSymbol is not IMethodSymbol { MethodKind: MethodKind.PropertyGet, AssociatedSymbol: IPropertySymbol property }
+                || !SymbolEqualityComparer.Default.Equals(property.Type, targetsProperty.Type))
             {
                 return;
             }
 
-            var returned = new ConstantCollector();
-            blockContext.RegisterOperationAction(operationContext =>
+            int? folded = null;
+            foreach (var block in blockContext.OperationBlocks)
             {
-                var value = ((IReturnOperation)operationContext.Operation).ReturnedValue?.ConstantValue;
-                returned.Add(value is { HasValue: true, Value: int constant } ? constant : NotAConstant);
-            }, OperationKind.Return);
-            blockContext.RegisterOperationBlockEndAction(_ => targetsByGetter[getter] = returned.Value);
+                foreach (var returned in block.DescendantsAndSelf().OfType<IReturnOperation>())
+                {
+                    var value = returned.ReturnedValue?.ConstantValue;
+                    var constant = value is { HasValue: true, Value: int i } ? i : NotAConstant;
+                    folded = folded is null ? constant : NotAConstant;
+                }
+            }
+
+            targetsByProperty[property] = folded ?? NotAConstant;
         });
 
         context.RegisterSyntaxNodeAction(nodeContext =>
         {
             nodeContext.CancellationToken.ThrowIfCancellationRequested();
-            var entry = (SimpleBaseTypeSyntax)nodeContext.Node;
-            if (entry.Parent?.Parent is not ClassDeclarationSyntax classDeclaration
-                || nodeContext.SemanticModel.GetTypeInfo(entry.Type, nodeContext.CancellationToken).Type is not
-                    INamedTypeSymbol { TypeKind: TypeKind.Interface } named
-                || !ActionAttributeAnalysis.IsOrDerivesFrom(named, testAction)
-                || nodeContext.SemanticModel.GetDeclaredSymbol(classDeclaration, nodeContext.CancellationToken) is not { } symbol)
+            if (ActionAttributeAnalysis.ClassNamingInterface(nodeContext, testAction) is { } symbol)
             {
-                return;
+                entryByType[symbol] = nodeContext.Node.GetLocation();
             }
-
-            entryByType[symbol] = entry.GetLocation();
         }, SyntaxKind.SimpleBaseType);
 
         context.RegisterSymbolAction(symbolContext =>
@@ -115,10 +114,8 @@ public sealed class TestActionAttributeUsageAnalyzer : DiagnosticAnalyzer
             var symbol = (INamedTypeSymbol)symbolContext.Symbol;
             // TestActionAttribute itself is exempt by type: it is precompiled in Unity, but the Tests project compiles its dummy
             // from source, and its own AttributeUsage allows Method for a Default action.
-            if (symbol.TypeKind == TypeKind.Class
-                && !SymbolEqualityComparer.Default.Equals(symbol, testActionAttribute)
-                && ActionAttributeAnalysis.DerivesFrom(symbol, attribute)
-                && ActionAttributeAnalysis.Implements(symbol, testAction))
+            if (!SymbolEqualityComparer.Default.Equals(symbol, testActionAttribute)
+                && ActionAttributeAnalysis.IsActionAttributeClass(symbol, testAction, attribute))
             {
                 candidates.Add(symbol);
             }
@@ -129,137 +126,67 @@ public sealed class TestActionAttributeUsageAnalyzer : DiagnosticAnalyzer
             foreach (var symbol in candidates)
             {
                 endContext.CancellationToken.ThrowIfCancellationRequested();
-                var targets = ResolveTargets(symbol, targetsProperty, targetsByGetter, testActionAttribute);
-                var supported = targets switch
-                {
-                    ActionTargetsTest => AttributeTargets.Method,
-                    ActionTargetsSuite or ActionTargetsDefault => SuiteTargets,
-                    ActionTargetsTest | ActionTargetsSuite => AttributeTargets.Method | SuiteTargets,
-                    _ => AttributeTargets.Method | AttributeTargets.Class,
-                };
+                var (supported, targetsText, supportedText) = Describe(ResolveTargets(symbol, targetsProperty, targetsByProperty, testActionAttribute));
                 if ((ActionAttributeAnalysis.EffectiveValidOn(symbol, attributeUsage) & ~supported) == 0)
                 {
                     continue;
                 }
 
                 var location = entryByType.TryGetValue(symbol, out var entry) ? entry : symbol.Locations[0];
-                endContext.ReportDiagnostic(Diagnostic.Create(Rule, location, Describe(targets), Describe(supported)));
+                endContext.ReportDiagnostic(Diagnostic.Create(Rule, location, targetsText, supportedText));
             }
         });
-    }
-
-    private static IPropertySymbol? FindTargetsProperty(INamedTypeSymbol testAction)
-    {
-        foreach (var member in testAction.GetMembers("Targets"))
-        {
-            if (member is IPropertySymbol property)
-            {
-                return property;
-            }
-        }
-
-        return null;
-    }
-
-    private static bool ImplementsTargets(IPropertySymbol property, IPropertySymbol targetsProperty)
-    {
-        if (property.ExplicitInterfaceImplementations.Length > 0)
-        {
-            foreach (var explicitImplementation in property.ExplicitInterfaceImplementations)
-            {
-                if (SymbolEqualityComparer.Default.Equals(explicitImplementation, targetsProperty))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        // Name and type instead of FindImplementationForInterfaceMember: an abstract attribute class may declare Targets
-        // without naming ITestAction itself, and a derived class then overrides it.
-        return property.Name == targetsProperty.Name
-               && SymbolEqualityComparer.Default.Equals(property.Type, targetsProperty.Type);
     }
 
     /// <summary>
     /// The constant returned by the Targets getter the class inherits, or <see cref="NotAConstant"/>.
     /// </summary>
     private static int ResolveTargets(INamedTypeSymbol symbol, IPropertySymbol targetsProperty,
-        ConcurrentDictionary<IMethodSymbol, int> targetsByGetter, INamedTypeSymbol? testActionAttribute)
+        ConcurrentDictionary<IPropertySymbol, int> targetsByProperty, INamedTypeSymbol? testActionAttribute)
     {
-        for (var type = symbol; type is not null; type = type.BaseType)
+        if (symbol.FindImplementationForInterfaceMember(targetsProperty) is not IPropertySymbol mapped)
         {
-            foreach (var member in type.GetMembers())
-            {
-                if (member is not IPropertySymbol { GetMethod: { } getter } property || !ImplementsTargets(property, targetsProperty))
-                {
-                    continue;
-                }
-
-                if (targetsByGetter.TryGetValue(getter, out var constant))
-                {
-                    return constant;
-                }
-
-                return SymbolEqualityComparer.Default.Equals(type, testActionAttribute) ? ActionTargetsDefault : NotAConstant;
-            }
+            return NotAConstant;
         }
 
-        return NotAConstant;
-    }
-
-    private static string Describe(int targets)
-    {
-        return targets switch
-        {
-            ActionTargetsDefault => "'ActionTargets.Default'",
-            ActionTargetsTest => "'ActionTargets.Test'",
-            ActionTargetsSuite => "'ActionTargets.Suite'",
-            ActionTargetsTest | ActionTargetsSuite => "'ActionTargets.Test | ActionTargets.Suite'",
-            _ => "not a constant",
-        };
-    }
-
-    private static string Describe(AttributeTargets supported)
-    {
-        return supported switch
-        {
-            AttributeTargets.Method => "test methods",
-            SuiteTargets => "fixture classes, interfaces, and assemblies",
-            AttributeTargets.Method | SuiteTargets => "test methods, fixture classes, interfaces, and assemblies",
-            _ => "test methods and fixture classes",
-        };
+        var implementation = MostDerivedOverride(symbol, mapped);
+        return targetsByProperty.TryGetValue(implementation, out var constant) ? constant
+            : SymbolEqualityComparer.Default.Equals(implementation.ContainingType, testActionAttribute) ? ActionTargetsDefault
+            : NotAConstant;
     }
 
     /// <summary>
-    /// Folds the returns of one getter: a single constant survives, anything else becomes <see cref="NotAConstant"/>.
-    /// Operation actions of one block may run concurrently, hence the lock.
+    /// FindImplementationForInterfaceMember returns the member of the type that declares the interface, so a derived
+    /// class that overrides a virtual Targets is resolved here by walking down from the class itself.
     /// </summary>
-    private sealed class ConstantCollector
+    private static IPropertySymbol MostDerivedOverride(INamedTypeSymbol symbol, IPropertySymbol mapped)
     {
-        private readonly object _lock = new();
-        private int _value = NotAConstant;
-        private bool _seen;
-
-        public int Value
+        for (var type = symbol; type is not null; type = type.BaseType)
         {
-            get
+            foreach (var property in type.GetMembers().OfType<IPropertySymbol>())
             {
-                lock (_lock)
+                for (var overridden = property; overridden is not null; overridden = overridden.OverriddenProperty)
                 {
-                    return _value;
+                    if (SymbolEqualityComparer.Default.Equals(overridden, mapped))
+                    {
+                        return property;
+                    }
                 }
             }
         }
 
-        public void Add(int constant)
+        return mapped;
+    }
+
+    private static (AttributeTargets Supported, string TargetsText, string SupportedText) Describe(int targets)
+    {
+        return targets switch
         {
-            lock (_lock)
-            {
-                _value = _seen ? NotAConstant : constant;
-                _seen = true;
-            }
-        }
+            ActionTargetsTest => (AttributeTargets.Method, "'ActionTargets.Test'", "test methods"),
+            ActionTargetsSuite => (SuiteTargets, "'ActionTargets.Suite'", "fixture classes, interfaces, and assemblies"),
+            ActionTargetsDefault => (SuiteTargets, "'ActionTargets.Default'", "fixture classes, interfaces, and assemblies"),
+            ActionTargetsTest | ActionTargetsSuite => (AttributeTargets.Method | SuiteTargets, "'ActionTargets.Test | ActionTargets.Suite'", "test methods, fixture classes, interfaces, and assemblies"),
+            _ => (AttributeTargets.Method | AttributeTargets.Class, "not a constant", "test methods and fixture classes"),
+        };
     }
 }

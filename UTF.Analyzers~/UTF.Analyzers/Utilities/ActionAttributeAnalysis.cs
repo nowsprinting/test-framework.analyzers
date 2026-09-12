@@ -1,5 +1,8 @@
 using System;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace UTF.Analyzers.Utilities;
 
@@ -8,6 +11,31 @@ namespace UTF.Analyzers.Utilities;
 /// </summary>
 internal static class ActionAttributeAnalysis
 {
+    /// <summary>
+    /// Whether the class can be applied as an attribute and implements the action interface.
+    /// </summary>
+    public static bool IsActionAttributeClass(INamedTypeSymbol symbol, INamedTypeSymbol interfaceType, INamedTypeSymbol attribute)
+    {
+        return symbol.TypeKind == TypeKind.Class && DerivesFrom(symbol, attribute) && Implements(symbol, interfaceType);
+    }
+
+    /// <summary>
+    /// Resolves a SimpleBaseType node to the class declaring it when the entry names the interface or an interface derived from it.
+    /// </summary>
+    public static INamedTypeSymbol? ClassNamingInterface(SyntaxNodeAnalysisContext context, INamedTypeSymbol interfaceType)
+    {
+        var entry = (SimpleBaseTypeSyntax)context.Node;
+        if (entry.Parent?.Parent is not ClassDeclarationSyntax classDeclaration
+            || context.SemanticModel.GetTypeInfo(entry.Type, context.CancellationToken).Type is not
+                INamedTypeSymbol { TypeKind: TypeKind.Interface } named
+            || !IsOrDerivesFrom(named, interfaceType))
+        {
+            return null;
+        }
+
+        return context.SemanticModel.GetDeclaredSymbol(classDeclaration, context.CancellationToken);
+    }
+
     public static bool DerivesFrom(INamedTypeSymbol symbol, INamedTypeSymbol baseType)
     {
         for (var type = symbol.BaseType; type is not null; type = type.BaseType)

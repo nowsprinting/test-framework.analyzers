@@ -16,6 +16,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("GetterBlock", 7, 48, Test, TestMethods)]
         [InlineData("ExplicitInterface", 7, 54, Test, TestMethods)]
         [InlineData("PartialClass", 12, 41, Test, TestMethods)]
+        [InlineData("OverridesSourceBase", 7, 18, Test, TestMethods)]
         [InlineData("SuiteAllowsMethod", 8, 54, Suite, SuiteTargets)]
         [InlineData("DefaultFromTestActionAttribute", 7, 18, "'ActionTargets.Default'", SuiteTargets)]
         [InlineData("BothFlagsNoUsage", 7, 53, "'ActionTargets.Test | ActionTargets.Suite'", "test methods, fixture classes, interfaces, and assemblies")]

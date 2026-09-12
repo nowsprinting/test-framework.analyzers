@@ -2,7 +2,6 @@ using System;
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using UTF.Analyzers.Utilities;
 
@@ -53,25 +52,18 @@ public sealed class OuterUnityTestActionAttributeUsageAnalyzer : DiagnosticAnaly
         context.RegisterSyntaxNodeAction(nodeContext =>
         {
             nodeContext.CancellationToken.ThrowIfCancellationRequested();
-            var entry = (SimpleBaseTypeSyntax)nodeContext.Node;
-            if (entry.Parent?.Parent is not ClassDeclarationSyntax classDeclaration
-                || nodeContext.SemanticModel.GetTypeInfo(entry.Type, nodeContext.CancellationToken).Type is not
-                    INamedTypeSymbol { TypeKind: TypeKind.Interface } named
-                || !ActionAttributeAnalysis.IsOrDerivesFrom(named, outerAction)
-                || nodeContext.SemanticModel.GetDeclaredSymbol(classDeclaration, nodeContext.CancellationToken) is not { } symbol
-                || !ShouldReport(symbol, outerAction, attribute, attributeUsage))
+            if (ActionAttributeAnalysis.ClassNamingInterface(nodeContext, outerAction) is { } symbol
+                && ShouldReport(symbol, outerAction, attribute, attributeUsage))
             {
-                return;
+                nodeContext.ReportDiagnostic(Diagnostic.Create(Rule, nodeContext.Node.GetLocation()));
             }
-
-            nodeContext.ReportDiagnostic(Diagnostic.Create(Rule, entry.GetLocation()));
         }, SyntaxKind.SimpleBaseType);
 
         context.RegisterSymbolAction(symbolContext =>
         {
             symbolContext.CancellationToken.ThrowIfCancellationRequested();
             var symbol = (INamedTypeSymbol)symbolContext.Symbol;
-            if (symbol.TypeKind != TypeKind.Class || ActionAttributeAnalysis.NamesInterface(symbol, outerAction)
+            if (ActionAttributeAnalysis.NamesInterface(symbol, outerAction)
                 || !ShouldReport(symbol, outerAction, attribute, attributeUsage))
             {
                 return;
@@ -84,8 +76,7 @@ public sealed class OuterUnityTestActionAttributeUsageAnalyzer : DiagnosticAnaly
     private static bool ShouldReport(INamedTypeSymbol symbol, INamedTypeSymbol outerAction, INamedTypeSymbol attribute,
         INamedTypeSymbol attributeUsage)
     {
-        return ActionAttributeAnalysis.DerivesFrom(symbol, attribute)
-               && ActionAttributeAnalysis.Implements(symbol, outerAction)
+        return ActionAttributeAnalysis.IsActionAttributeClass(symbol, outerAction, attribute)
                && (ActionAttributeAnalysis.EffectiveValidOn(symbol, attributeUsage) & ~AttributeTargets.Method) != 0;
     }
 }
