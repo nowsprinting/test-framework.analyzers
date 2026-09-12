@@ -32,25 +32,25 @@ UTF v1.4.6 is the last version you can update independently as a UPM package.
 
 Rules about test method signatures and attribute combinations.
 
-| Id | Title |
-|----|-------|
-| [UTF1001](Documentation~/rules/UTF1001.md) | TestCase and TestCaseSource attributes are not supported on coroutine-style test methods |
-| [UTF1002](Documentation~/rules/UTF1002.md) | Task&lt;TResult&gt; is not supported as a test method return type |
-| [UTF1003](Documentation~/rules/UTF1003.md) | Pairwise, Sequential, and Combinatorial attributes are not supported on coroutine-style test methods |
-| [UTF1004](Documentation~/rules/UTF1004.md) | OneTimeSetUp and OneTimeTearDown attributes are not supported on async methods |
-| [UTF1005](Documentation~/rules/UTF1005.md) | Attributes implementing ICommandWrapper are not supported on async and coroutine-style test methods |
+| Id | Title | Severity |
+|----|-------|----------|
+| [UTF1001](Documentation~/rules/UTF1001.md) | TestCase and TestCaseSource attributes are not supported on coroutine-style test methods | ❌ |
+| [UTF1002](Documentation~/rules/UTF1002.md) | Task&lt;TResult&gt; is not supported as a test method return type | ❌ |
+| [UTF1003](Documentation~/rules/UTF1003.md) | Pairwise, Sequential, and Combinatorial attributes are not supported on coroutine-style test methods | ❌ |
+| [UTF1004](Documentation~/rules/UTF1004.md) | OneTimeSetUp and OneTimeTearDown attributes are not supported on async methods | ❌ |
+| [UTF1005](Documentation~/rules/UTF1005.md) | Attributes implementing ICommandWrapper are not supported on async and coroutine-style test methods | ❌ |
 
 ### Assertion (UTF2xxx)
 
 Rules about misuse of assertions and constraints.
 
-| Id | Title |
-|----|-------|
-| [UTF2001](Documentation~/rules/UTF2001.md) | Assert.ThrowsAsync, CatchAsync, and DoesNotThrowAsync are not supported |
-| [UTF2002](Documentation~/rules/UTF2002.md) | Async delegates are not supported as the actual value of Throws constraints, Assert.Throws, Assert.Catch, and Assert.DoesNotThrow |
-| [UTF2003](Documentation~/rules/UTF2003.md) | Async delegates are not supported as the actual value of the constraint model |
-| [UTF2004](Documentation~/rules/UTF2004.md) | Only TestDelegate is supported as the actual value of the AllocatingGCMemory constraint |
-| [UTF2005](Documentation~/rules/UTF2005.md) | DelayedConstraint is not supported |
+| Id | Title | Severity |
+|----|-------|----------|
+| [UTF2001](Documentation~/rules/UTF2001.md) | Assert.ThrowsAsync, CatchAsync, and DoesNotThrowAsync are not supported | ❌ |
+| [UTF2002](Documentation~/rules/UTF2002.md) | Async delegates are not supported as the actual value of Throws constraints, Assert.Throws, Assert.Catch, and Assert.DoesNotThrow | ❌ |
+| [UTF2003](Documentation~/rules/UTF2003.md) | Async delegates are not supported as the actual value of the constraint model | ❌ |
+| [UTF2004](Documentation~/rules/UTF2004.md) | Only TestDelegate is supported as the actual value of the AllocatingGCMemory constraint | ❌ |
+| [UTF2005](Documentation~/rules/UTF2005.md) | DelayedConstraint is not supported | ❌ |
 
 ### Suppressor (UTF3xxx)
 
@@ -69,17 +69,17 @@ Suppressions of diagnostics reported by other analyzers that do not apply to Uni
 
 Rules about code that works but is not recommended.
 
-| Id | Title |
-|----|-------|
+| Id | Title | Severity |
+|----|-------|----------|
 
 ### Extensions (UTF5xxx)
 
 Rules for authors of custom attributes, constraints, and comparers.
 
-| Id | Title |
-|----|-------|
-| [UTF5001](Documentation~/rules/UTF5001.md) | ApplyToTest, ApplyToContext, and Wrap must not throw exceptions |
-| [UTF5002](Documentation~/rules/UTF5002.md) | Implementing IWrapTestMethod and IWrapSetUpTearDown is not recommended |
+| Id | Title | Severity |
+|----|-------|----------|
+| [UTF5001](Documentation~/rules/UTF5001.md) | ApplyToTest, ApplyToContext, and Wrap must not throw exceptions | ❌ |
+| [UTF5002](Documentation~/rules/UTF5002.md) | Implementing IWrapTestMethod and IWrapSetUpTearDown is not recommended | ⚠️ |
 
 
 ## Installation
