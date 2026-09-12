@@ -12,7 +12,8 @@ namespace UTF.Analyzers.Tests
         [InlineData("DerivedInterface", 13, 53)]
         [InlineData("QualifiedName", 7, 50)]
         [InlineData("PartialClass", 13, 41)]
-        public async Task AttributeAllowingOtherTargets_ReportsAtBaseListEntry(string fixture, int line, int column)
+        [InlineData("PartialWidensBase", 10, 26)]
+        public async Task AttributeAllowingOtherTargets_ReportsOnce(string fixture, int line, int column)
         {
             var expected = Verifier.Diagnostic().WithLocation(line, column);
             await Verifier.VerifyAsync($"UTF5003/{fixture}.cs", expected);
@@ -27,13 +28,6 @@ namespace UTF.Analyzers.Tests
                 Verifier.Diagnostic().WithLocation(14, 72),
             };
             await Verifier.VerifyAsync("UTF5003/InheritedFromBase.cs", expected);
-        }
-
-        [Fact]
-        public async Task PartialClassWideningBaseUsage_ReportsAtFirstDeclarationClassName()
-        {
-            var expected = Verifier.Diagnostic().WithLocation(10, 26);
-            await Verifier.VerifyAsync("UTF5003/PartialWidensBase.cs", expected);
         }
 
         [Theory]

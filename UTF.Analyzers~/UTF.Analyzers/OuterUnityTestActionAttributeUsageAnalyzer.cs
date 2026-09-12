@@ -46,35 +46,46 @@ public sealed class OuterUnityTestActionAttributeUsageAnalyzer : DiagnosticAnaly
             return;
         }
 
-        // A syntax node action on the class declaration rather than a symbol action: the location is the base list entry
-        // that names the interface, and locating it from a symbol action needs Compilation.GetSemanticModel (RS1030).
+        // Two actions instead of one: a class that names the interface is reported at that base list entry, which a
+        // symbol action cannot locate without Compilation.GetSemanticModel (RS1030); a class that inherits the interface
+        // from its base class has no such entry and is reported at its name, which a syntax action on the base list never sees.
         context.RegisterSyntaxNodeAction(nodeContext =>
         {
             nodeContext.CancellationToken.ThrowIfCancellationRequested();
-            var classDeclaration = (ClassDeclarationSyntax)nodeContext.Node;
-            var symbol = nodeContext.SemanticModel.GetDeclaredSymbol(classDeclaration, nodeContext.CancellationToken);
-            if (symbol is null || !DerivesFrom(symbol, attribute) || !Implements(symbol, outerAction)
-                || (EffectiveValidOn(symbol, attribute, attributeUsage) & ~AttributeTargets.Method) == 0)
+            var entry = (SimpleBaseTypeSyntax)nodeContext.Node;
+            if (entry.Parent?.Parent is not ClassDeclarationSyntax classDeclaration
+                || nodeContext.SemanticModel.GetTypeInfo(entry.Type, nodeContext.CancellationToken).Type is not
+                    INamedTypeSymbol { TypeKind: TypeKind.Interface } named
+                || !IsOrDerivesFrom(named, outerAction)
+                || nodeContext.SemanticModel.GetDeclaredSymbol(classDeclaration, nodeContext.CancellationToken) is not { } symbol
+                || !ShouldReport(symbol, outerAction, attribute, attributeUsage))
             {
                 return;
             }
 
-            var entry = FindInterfaceEntry(classDeclaration, outerAction, nodeContext);
-            if (entry is not null)
+            nodeContext.ReportDiagnostic(Diagnostic.Create(Rule, entry.GetLocation()));
+        }, SyntaxKind.SimpleBaseType);
+
+        context.RegisterSymbolAction(symbolContext =>
+        {
+            symbolContext.CancellationToken.ThrowIfCancellationRequested();
+            var symbol = (INamedTypeSymbol)symbolContext.Symbol;
+            if (symbol.TypeKind != TypeKind.Class || NamesInterface(symbol, outerAction)
+                || !ShouldReport(symbol, outerAction, attribute, attributeUsage))
             {
-                nodeContext.ReportDiagnostic(Diagnostic.Create(Rule, entry.GetLocation()));
                 return;
             }
 
-            // Another declaration of the partial class names the interface and reports it; otherwise the interface comes
-            // from a base class and the first declaration reports at the class name.
-            if (NamesInterface(symbol, outerAction) || symbol.DeclaringSyntaxReferences[0].GetSyntax(nodeContext.CancellationToken) != classDeclaration)
-            {
-                return;
-            }
+            symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, symbol.Locations[0]));
+        }, SymbolKind.NamedType);
+    }
 
-            nodeContext.ReportDiagnostic(Diagnostic.Create(Rule, classDeclaration.Identifier.GetLocation()));
-        }, SyntaxKind.ClassDeclaration);
+    private static bool ShouldReport(INamedTypeSymbol symbol, INamedTypeSymbol outerAction, INamedTypeSymbol attribute,
+        INamedTypeSymbol attributeUsage)
+    {
+        return DerivesFrom(symbol, attribute)
+               && Implements(symbol, outerAction)
+               && (EffectiveValidOn(symbol, attributeUsage) & ~AttributeTargets.Method) != 0;
     }
 
     private static bool DerivesFrom(INamedTypeSymbol symbol, INamedTypeSymbol attribute)
@@ -90,8 +101,15 @@ public sealed class OuterUnityTestActionAttributeUsageAnalyzer : DiagnosticAnaly
         return false;
     }
 
+    private static bool IsOrDerivesFrom(INamedTypeSymbol candidate, INamedTypeSymbol outerAction)
+    {
+        return SymbolEqualityComparer.Default.Equals(candidate, outerAction) || Implements(candidate, outerAction);
+    }
+
     private static bool Implements(INamedTypeSymbol symbol, INamedTypeSymbol outerAction)
     {
+        // foreach instead of the LINQ Contains overload: every named type and base list entry in the compilation reaches
+        // here, and the LINQ overload boxes the ImmutableArray on each call.
         foreach (var inherited in symbol.AllInterfaces)
         {
             if (SymbolEqualityComparer.Default.Equals(inherited, outerAction))
@@ -110,7 +128,7 @@ public sealed class OuterUnityTestActionAttributeUsageAnalyzer : DiagnosticAnaly
     {
         foreach (var declared in symbol.Interfaces)
         {
-            if (SymbolEqualityComparer.Default.Equals(declared, outerAction) || Implements(declared, outerAction))
+            if (IsOrDerivesFrom(declared, outerAction))
             {
                 return true;
             }
@@ -119,37 +137,13 @@ public sealed class OuterUnityTestActionAttributeUsageAnalyzer : DiagnosticAnaly
         return false;
     }
 
-    private static BaseTypeSyntax? FindInterfaceEntry(ClassDeclarationSyntax classDeclaration, INamedTypeSymbol outerAction,
-        SyntaxNodeAnalysisContext context)
-    {
-        if (classDeclaration.BaseList is null)
-        {
-            return null;
-        }
-
-        foreach (var entry in classDeclaration.BaseList.Types)
-        {
-            if (context.SemanticModel.GetTypeInfo(entry.Type, context.CancellationToken).Type is INamedTypeSymbol
-                {
-                    TypeKind: TypeKind.Interface
-                } named
-                && (SymbolEqualityComparer.Default.Equals(named, outerAction) || Implements(named, outerAction)))
-            {
-                return entry;
-            }
-        }
-
-        return null;
-    }
-
     /// <summary>
     /// The AttributeUsage the compiler applies: the class's own, else the nearest base class's, else All.
     /// Roslyn's GetAttributeUsageInfo is internal, so the base chain is walked here.
     /// </summary>
-    private static AttributeTargets EffectiveValidOn(INamedTypeSymbol symbol, INamedTypeSymbol attribute,
-        INamedTypeSymbol attributeUsage)
+    private static AttributeTargets EffectiveValidOn(INamedTypeSymbol symbol, INamedTypeSymbol attributeUsage)
     {
-        for (var type = symbol; type is not null && !SymbolEqualityComparer.Default.Equals(type, attribute); type = type.BaseType)
+        for (var type = symbol; type is not null; type = type.BaseType)
         {
             foreach (var data in type.GetAttributes())
             {
