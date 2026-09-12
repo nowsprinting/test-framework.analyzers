@@ -38,8 +38,9 @@ namespace UTF.Analyzers.Tests
 
         [Theory]
         [InlineData("CommandWrapperOnly")]
+        [InlineData("TestAction")]
         [InlineData("OuterUnityTestAction")]
-        public async Task CommandWrapperOnlyOrOuterUnityTestAction_NoDiagnostic(string fixture)
+        public async Task CommandWrapperOnlyOrActionHook_NoDiagnostic(string fixture)
         {
             await Verifier.VerifyAsync($"UTF5002/{fixture}.cs");
         }

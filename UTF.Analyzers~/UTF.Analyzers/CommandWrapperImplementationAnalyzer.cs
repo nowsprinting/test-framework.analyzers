@@ -18,12 +18,12 @@ public sealed class CommandWrapperImplementationAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
         title: "Implementing IWrapTestMethod and IWrapSetUpTearDown is not recommended",
-        messageFormat: "Attributes implementing '{0}' cannot be applied to async and coroutine-style test methods. Implement IOuterUnityTestAction instead.",
+        messageFormat: "Attributes implementing '{0}' cannot be applied to async and coroutine-style test methods. Implement ITestAction or IOuterUnityTestAction instead.",
         category: "Extensions",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description:
-        "Detects a class whose base list names NUnit.Framework.Interfaces.IWrapTestMethod or NUnit.Framework.Interfaces.IWrapSetUpTearDown. Unity Test Framework cannot run the command returned by a user-defined Wrap on async Task and coroutine-style test methods, so such an attribute can be applied only to synchronous test methods. UnityEngine.TestTools.IOuterUnityTestAction provides before/after hooks that work on every kind of test method.",
+        "Detects a class whose base list names NUnit.Framework.Interfaces.IWrapTestMethod or NUnit.Framework.Interfaces.IWrapSetUpTearDown. Unity Test Framework cannot run the command returned by a user-defined Wrap on async Task and coroutine-style test methods, so such an attribute can be applied only to synchronous test methods. NUnit.Framework.ITestAction and UnityEngine.TestTools.IOuterUnityTestAction provide before/after hooks that work on every kind of test method: ITestAction when the hooks are synchronous, IOuterUnityTestAction when they need to yield.",
         helpLinkUri: "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF5002.md");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
