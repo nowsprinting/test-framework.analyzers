@@ -80,6 +80,8 @@ Rules for authors of custom attributes, constraints, and comparers.
 |----|-------|----------|
 | [UTF5001](Documentation~/rules/UTF5001.md) | ApplyToTest, ApplyToContext, and Wrap must not throw exceptions | ❌ |
 | [UTF5002](Documentation~/rules/UTF5002.md) | Implementing IWrapTestMethod and IWrapSetUpTearDown is not recommended | ⚠️ |
+| [UTF5003](Documentation~/rules/UTF5003.md) | Attributes implementing IOuterUnityTestAction must restrict their targets with AttributeUsage | ⚠️ |
+| [UTF5004](Documentation~/rules/UTF5004.md) | Attributes implementing ITestAction must restrict their targets with AttributeUsage | ⚠️ |
 
 
 ## Installation
