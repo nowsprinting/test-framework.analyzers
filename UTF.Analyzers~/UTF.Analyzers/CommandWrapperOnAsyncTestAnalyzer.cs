@@ -45,16 +45,7 @@ public sealed class CommandWrapperOnAsyncTestAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        // Unity Test Framework substitutes the commands produced by these attributes by exact type name,
-        // so the exemption is by exact type as well; a derived attribute is reported.
-        // A null entry (type not referenced) never equals an attribute class, so no filtering is needed.
-        var exempt = new[]
-        {
-            compilation.GetTypeByMetadataName("NUnit.Framework.RepeatAttribute"),
-            compilation.GetTypeByMetadataName("NUnit.Framework.RetryAttribute"),
-            compilation.GetTypeByMetadataName("NUnit.Framework.MaxTimeAttribute"),
-            compilation.GetTypeByMetadataName("UnityEngine.TestTools.ParametrizedIgnoreAttribute"),
-        };
+        var exempt = CommandWrapperAnalysis.SupportedWrapperAttributes(compilation);
         var enumerator = compilation.GetSpecialType(SpecialType.System_Collections_IEnumerator);
 
         context.RegisterSymbolAction(symbolContext =>
@@ -79,7 +70,7 @@ public sealed class CommandWrapperOnAsyncTestAnalyzer : DiagnosticAnalyzer
                 var attributeClass = attribute.AttributeClass;
                 if (attributeClass is null
                     || !attributeClass.AllInterfaces.Contains(commandWrapper, SymbolEqualityComparer.Default)
-                    || exempt.Contains(attributeClass, SymbolEqualityComparer.Default))
+                    || exempt.Contains(attributeClass))
                 {
                     continue;
                 }

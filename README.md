@@ -79,6 +79,7 @@ Rules for authors of custom attributes, constraints, and comparers.
 | Id | Title |
 |----|-------|
 | [UTF5001](Documentation~/rules/UTF5001.md) | ApplyToTest, ApplyToContext, and Wrap must not throw exceptions |
+| [UTF5002](Documentation~/rules/UTF5002.md) | Implementing IWrapTestMethod and IWrapSetUpTearDown is not recommended |
 
 
 ## Installation
