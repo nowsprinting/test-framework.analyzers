@@ -1,6 +1,9 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -30,5 +33,59 @@ public sealed class NonTaskAsyncTestMethodAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
+        context.RegisterCompilationStartAction(OnCompilationStart);
+    }
+
+    private static void OnCompilationStart(CompilationStartAnalysisContext context)
+    {
+        var testAttributes = new[]
+            {
+                context.Compilation.GetTypeByMetadataName("NUnit.Framework.TestAttribute"),
+                context.Compilation.GetTypeByMetadataName("NUnit.Framework.TestCaseAttribute"),
+                context.Compilation.GetTypeByMetadataName("NUnit.Framework.TestCaseSourceAttribute"),
+            }
+            .Where(t => t is not null)
+            .ToImmutableArray();
+        var task = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
+        var genericTask = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
+        if (testAttributes.IsEmpty || task is null || genericTask is null)
+        {
+            return;
+        }
+
+        context.RegisterSymbolAction(symbolContext =>
+        {
+            symbolContext.CancellationToken.ThrowIfCancellationRequested();
+            var method = (IMethodSymbol)symbolContext.Symbol;
+            var returnType = method.ReturnType;
+            // void is left to NUnit1012, Task is the supported type, and Task<TResult> is UTF1002's; these are excluded
+            // before the awaitable check because Task itself satisfies it.
+            if (returnType.SpecialType == SpecialType.System_Void
+                || SymbolEqualityComparer.Default.Equals(returnType, task)
+                || SymbolEqualityComparer.Default.Equals(returnType.OriginalDefinition, genericTask))
+            {
+                return;
+            }
+
+            if (!method.IsAsync && !AwaitableAnalysis.IsAwaitable(returnType))
+            {
+                return;
+            }
+
+            if (!method.GetAttributes().Any(a =>
+                    testAttributes.Contains(a.AttributeClass?.OriginalDefinition, SymbolEqualityComparer.Default)))
+            {
+                return;
+            }
+
+            // The defect is the return type, not any single attribute, so one diagnostic is reported at the return type
+            // even when several test attributes are applied to the method.
+            var location =
+                (method.DeclaringSyntaxReferences[0].GetSyntax(symbolContext.CancellationToken) as
+                    MethodDeclarationSyntax)
+                ?.ReturnType.GetLocation() ?? method.Locations[0];
+            symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location,
+                returnType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+        }, SymbolKind.Method);
     }
 }
