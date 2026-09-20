@@ -39,6 +39,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("TransitiveCall", 13, 13, ApplyToTest)]
         [InlineData("PartiallyCaughtCallee", 15, 17, ApplyToTest)]
         [InlineData("RecursiveCallee", 13, 13, ApplyToTest)]
+        [InlineData("CallChainAtDepthLimit", 13, 13, ApplyToTest)]
         public async Task ThrowEscapesFromCallee_ReportsAtCallSite(string fixture, int line, int column, string member)
         {
             var expected = Verifier.Diagnostic().WithLocation(line, column).WithArguments(member);
@@ -70,6 +71,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("AsyncAndIteratorCallee")]
         [InlineData("NonImplementingMethod")]
         [InlineData("RecursionWithoutThrow")]
+        [InlineData("CallChainBeyondDepthLimit")]
         public async Task HandledOrUntracked_NoDiagnostic(string fixture)
         {
             await Verifier.VerifyAsync($"UTF5001/{fixture}.cs");
