@@ -23,12 +23,22 @@ internal sealed class WaitAnalysis
 
     private static readonly string[] UniTaskTimeoutNames = { "Timeout", "TimeoutWithoutException" };
 
+    // Types whose members are read to get the current time or frame. A loop whose condition reads one of them ends
+    // when the deadline passes. The whole type is matched rather than each clock member (Time.time,
+    // DateTime.UtcNow, Stopwatch.ElapsedMilliseconds, ...): the non-clock members (Time.timeScale, DateTime.Year)
+    // make no sense in a wait condition, so a member list would only add maintenance.
+    private static readonly string[] ClockTypeNames =
+    {
+        "UnityEngine.Time", "System.DateTime", "System.DateTimeOffset", "System.Diagnostics.Stopwatch"
+    };
+
     private readonly Compilation _compilation;
     private readonly INamedTypeSymbol? _waitUntil;
     private readonly INamedTypeSymbol? _waitWhile;
     private readonly INamedTypeSymbol? _uniTask;
     private readonly INamedTypeSymbol? _uniTaskExtensions;
     private readonly INamedTypeSymbol? _timeSpan;
+    private readonly HashSet<INamedTypeSymbol> _clockTypes = new(SymbolEqualityComparer.Default);
 
     public WaitAnalysis(Compilation compilation)
     {
@@ -38,19 +48,25 @@ internal sealed class WaitAnalysis
         _uniTask = compilation.GetTypeByMetadataName("Cysharp.Threading.Tasks.UniTask");
         _uniTaskExtensions = compilation.GetTypeByMetadataName("Cysharp.Threading.Tasks.UniTaskExtensions");
         _timeSpan = compilation.GetTypeByMetadataName("System.TimeSpan");
+        foreach (var name in ClockTypeNames)
+        {
+            if (compilation.GetTypeByMetadataName(name) is { } clock)
+            {
+                _clockTypes.Add(clock);
+            }
+        }
     }
 
     /// <summary>
-    /// The waits in <paramref name="method"/>, with their reported location and name. A UniTask predicate wait that
-    /// is the receiver of Timeout(...) or TimeoutWithoutException(...) is returned with HasTimeoutChain set; whether
-    /// that counts as bounded is the caller's policy.
+    /// The unbounded waits in <paramref name="method"/>, with their reported location and name. A UniTask predicate
+    /// wait that is the receiver of Timeout(...) or TimeoutWithoutException(...) is bounded and not returned.
     /// </summary>
-    public IEnumerable<(Location Location, string Name, bool HasTimeoutChain)> Waits(IMethodSymbol method,
+    public IEnumerable<(Location Location, string Name)> Waits(IMethodSymbol method,
         CancellationToken cancellationToken)
     {
         if (OperationAnalysis.MethodBody(_compilation, method, cancellationToken) is not { } body)
         {
-            return Array.Empty<(Location, string, bool)>();
+            return Array.Empty<(Location, string)>();
         }
 
         var walker = new Walker(this, cancellationToken);
@@ -80,6 +96,97 @@ internal sealed class WaitAnalysis
                && Array.IndexOf(UniTaskTimeoutNames, outer.Name) >= 0;
     }
 
+    // A loop is a deadline when its condition reads a clock, or when it compares a variable that the body advances
+    // from a clock ("elapsed += Time.deltaTime"). The direction of the comparison and the shape of the condition
+    // are not checked: "while (Time.time > start)" and "while (!_flag || Time.time < deadline)" are taken as
+    // bounded, since no one writes them on purpose. The condition is null only in error scenarios; the loop is then
+    // reported as usual.
+    private bool IsDeadline(IWhileLoopOperation loop)
+    {
+        if (loop.Condition is not { } condition)
+        {
+            return false;
+        }
+
+        if (ReadsClock(condition))
+        {
+            return true;
+        }
+
+        var compared = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+        CollectVariables(condition, compared);
+        return compared.Count > 0 && AssignsClock(loop.Body, compared);
+    }
+
+    private static void CollectVariables(IOperation operation, HashSet<ISymbol> variables)
+    {
+        switch (operation)
+        {
+            case ILocalReferenceOperation local:
+                variables.Add(local.Local);
+                break;
+            case IFieldReferenceOperation field:
+                variables.Add(field.Field);
+                break;
+        }
+
+        foreach (var child in operation.ChildOperations)
+        {
+            CollectVariables(child, variables);
+        }
+    }
+
+    private bool AssignsClock(IOperation operation, HashSet<ISymbol> variables)
+    {
+        if (operation is IAssignmentOperation assignment && ReadsClock(assignment.Value))
+        {
+            ISymbol? target = assignment.Target switch
+            {
+                ILocalReferenceOperation local => local.Local,
+                IFieldReferenceOperation field => field.Field,
+                _ => null,
+            };
+            if (target is not null && variables.Contains(target))
+            {
+                return true;
+            }
+        }
+
+        foreach (var child in operation.ChildOperations)
+        {
+            if (AssignsClock(child, variables))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool ReadsClock(IOperation condition)
+    {
+        var member = condition switch
+        {
+            IMemberReferenceOperation reference => reference.Member,
+            IInvocationOperation invocation => invocation.TargetMethod,
+            _ => null,
+        };
+        if (member is not null && _clockTypes.Contains(member.ContainingType))
+        {
+            return true;
+        }
+
+        foreach (var child in condition.ChildOperations)
+        {
+            if (ReadsClock(child))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // The overloads that take a TimeSpan timeout end by themselves.
     private bool IsPredicateYieldInstruction(IMethodSymbol constructor)
     {
@@ -107,7 +214,7 @@ internal sealed class WaitAnalysis
         private readonly CancellationToken _cancellationToken;
         private readonly HashSet<IMethodSymbol> _inProgress = new(SymbolEqualityComparer.Default);
 
-        public List<(Location Location, string Name, bool HasTimeoutChain)> Found { get; } = new();
+        public List<(Location Location, string Name)> Found { get; } = new();
 
         public Walker(WaitAnalysis analysis, CancellationToken cancellationToken)
         {
@@ -126,17 +233,21 @@ internal sealed class WaitAnalysis
                 case ILocalFunctionOperation { Body: { } body }:
                     VisitNested(body, depth);
                     return;
-                case IWhileLoopOperation loop when YieldsOrAwaits(loop.Body):
-                    Found.Add((LoopKeyword(loop), loop.ConditionIsTop ? "while" : "do", false));
+                case IWhileLoopOperation loop when YieldsOrAwaits(loop.Body) && !_analysis.IsDeadline(loop):
+                    Found.Add((LoopKeyword(loop), loop.ConditionIsTop ? "while" : "do"));
                     return;
+                // A CancellationToken argument does not bound the wait: the test runner never cancels it.
                 case IInvocationOperation invocation when _analysis.IsPredicateWait(invocation.TargetMethod):
-                    Found.Add((operation.Syntax.GetLocation(),
-                        $"{invocation.TargetMethod.ContainingType.Name}.{invocation.TargetMethod.Name}",
-                        _analysis.IsTimeoutReceiver(invocation)));
+                    if (!_analysis.IsTimeoutReceiver(invocation))
+                    {
+                        Found.Add((operation.Syntax.GetLocation(),
+                            $"{invocation.TargetMethod.ContainingType.Name}.{invocation.TargetMethod.Name}"));
+                    }
+
                     return;
                 case IObjectCreationOperation { Constructor: { } constructor }
                     when _analysis.IsPredicateYieldInstruction(constructor):
-                    Found.Add((operation.Syntax.GetLocation(), constructor.ContainingType.Name, false));
+                    Found.Add((operation.Syntax.GetLocation(), constructor.ContainingType.Name));
                     return;
                 case IAwaitOperation { Operation: IInvocationOperation awaited }:
                     VisitCallee(awaited, depth);
@@ -175,8 +286,7 @@ internal sealed class WaitAnalysis
                 return;
             }
 
-            // A wait inside the callee is reported once, at the call site, whatever it is and wherever it is. The call
-            // site is bounded only when every wait inside is.
+            // A wait inside the callee is reported once, at the call site, whatever it is and wherever it is.
             var before = Found.Count;
             if (OperationAnalysis.MethodBody(_analysis._compilation, callee, _cancellationToken) is { } body)
             {
@@ -186,14 +296,8 @@ internal sealed class WaitAnalysis
             _inProgress.Remove(callee);
             if (Found.Count > before)
             {
-                var allChained = true;
-                for (var i = before; i < Found.Count; i++)
-                {
-                    allChained &= Found[i].HasTimeoutChain;
-                }
-
                 Found.RemoveRange(before, Found.Count - before);
-                Found.Add((invocation.Syntax.GetLocation(), callee.Name, allChained));
+                Found.Add((invocation.Syntax.GetLocation(), callee.Name));
             }
         }
 

@@ -24,7 +24,7 @@ public sealed class UnboundedWaitInSetUpTearDownAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
-        "Detects a setup or teardown method that waits for a condition with no time limit of its own: a while or do loop that yields or awaits in its body, or a call to WaitUntil, WaitWhile, or the UniTask.WaitUntil family that is not bounded by a timeout, directly in the method or in helpers, lambdas, and local functions up to two levels deep. Unity Test Framework checks the Timeout attribute and its 180-second default only while the test method body runs, so when the condition never holds the test run hangs.",
+        "Detects a setup or teardown method that waits for a condition with no time limit of its own: a while or do loop that yields or awaits in its body and is not a deadline loop that reads a clock, or a call to WaitUntil, WaitWhile, or the UniTask.WaitUntil family that is not bounded by a timeout, directly in the method or in helpers, lambdas, and local functions up to two levels deep. Unity Test Framework checks the Timeout attribute and its 180-second default only while the test method body runs, so when the condition never holds the test run hangs.",
         helpLinkUri:
         "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF4002.md");
 
@@ -75,12 +75,9 @@ public sealed class UnboundedWaitInSetUpTearDownAnalyzer : DiagnosticAnalyzer
                 return;
             }
 
-            foreach (var (location, name, hasTimeoutChain) in analysis.Waits(method, symbolContext.CancellationToken))
+            foreach (var (location, name) in analysis.Waits(method, symbolContext.CancellationToken))
             {
-                if (!hasTimeoutChain)
-                {
-                    symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location, name, hook.Name));
-                }
+                symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location, name, hook.Name));
             }
         }, SymbolKind.Method);
     }

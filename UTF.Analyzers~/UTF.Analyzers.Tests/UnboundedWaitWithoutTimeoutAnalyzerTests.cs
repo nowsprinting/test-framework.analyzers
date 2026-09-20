@@ -15,12 +15,14 @@ namespace UTF.Analyzers.Tests
         [InlineData("UniTaskWaitWhileWithState", 15, 19, "UniTask.WaitWhile")]
         [InlineData("UniTaskWaitUntilValueChanged", 15, 19, "UniTask.WaitUntilValueChanged")]
         [InlineData("UniTaskWaitUntilCanceled", 15, 19, "UniTask.WaitUntilCanceled")]
+        [InlineData("UniTaskWaitUntilWithCancellationToken", 17, 19, "UniTask.WaitUntil")]
         [InlineData("LoopInHelper", 15, 26, "WaitForFlag")]
         [InlineData("LoopInNestedHelper", 15, 19, "WaitForFlagAsync")]
         [InlineData("WaitUntilInHelper", 16, 26, "WaitForFlag")]
         [InlineData("LoopInLambda", 18, 17, "while")]
         [InlineData("LoopInLocalFunction", 19, 17, "while")]
         [InlineData("TimeoutOnBaseClass", 21, 13, "while")]
+        [InlineData("ClockReadInLoopBody", 16, 13, "while")]
         public async Task UnboundedWaitWithoutTimeout_ReportsAtWait(string fixture, int line, int column, string wait)
         {
             var expected = Verifier.Diagnostic().WithLocation(line, column).WithArguments(wait);
@@ -46,6 +48,11 @@ namespace UTF.Analyzers.Tests
         [InlineData("LoopInUnitySetUp")]
         [InlineData("HelperBeyondDepthLimit")]
         [InlineData("HelperWithBoundedWait")]
+        [InlineData("UniTaskTimeoutChain")]
+        [InlineData("HelperWithTimeoutChain")]
+        [InlineData("DeadlineLoop")]
+        [InlineData("DeadlineLoopInHelper")]
+        [InlineData("AccumulatedDeltaTimeLoop")]
         public async Task TimeoutPresentOrBoundedWait_NoDiagnostic(string fixture)
         {
             await Verifier.VerifyAsync($"UTF4001/{fixture}.cs");
