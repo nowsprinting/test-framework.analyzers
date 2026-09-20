@@ -4,12 +4,12 @@ using NUnit.Framework;
 namespace UTF.Analyzers.Tests.TestData.UTF4003
 {
 
-    public class EmptyLoopInAsyncVoidTearDown
+    public class EmptyLoopInAsyncTearDown
     {
         private bool _flag;
 
         [TearDown]
-        public async void TearDown()
+        public async Task TearDown()
         {
             while (!_flag)   // UTF4003
             {

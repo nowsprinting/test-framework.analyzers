@@ -18,7 +18,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("EmptyLoopInAsyncTest", 14, 13, "while")]
         [InlineData("EmptyLoopInUnitySetUp", 15, 13, "while")]
         [InlineData("EmptyLoopInOneTimeSetUp", 13, 13, "while")]
-        [InlineData("EmptyLoopInAsyncVoidTearDown", 14, 13, "while")]
+        [InlineData("EmptyLoopInAsyncTearDown", 14, 13, "while")]
         [InlineData("OverrideOfUnitySetUp", 19, 13, "while")]
         [InlineData("LoopInLambda", 16, 17, "while")]
         [InlineData("LoopInTaskRunLambda", 16, 17, "while")]
