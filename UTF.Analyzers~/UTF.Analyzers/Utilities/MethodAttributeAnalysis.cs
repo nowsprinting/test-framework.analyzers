@@ -40,7 +40,8 @@ internal sealed class MethodAttributeAnalysis
     /// <summary>
     /// Plain loops rather than LINQ because this runs on every method symbol: Contains with a comparer boxes the
     /// ImmutableArray and Any allocates a closure per call. UnityHookMethodAnalysis.FindAttribute is not reused because
-    /// it walks OverriddenMethod; the return-type rules report only on the declaration that spells the return type.
+    /// it walks OverriddenMethod: the return-type rules inspect only the attributes applied to the declaration itself,
+    /// so an override that inherits [SetUp] or [Test] from its base method is not reported.
     /// </summary>
     public bool HasAttribute(IMethodSymbol method)
     {
