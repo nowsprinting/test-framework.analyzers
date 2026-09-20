@@ -1,6 +1,6 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -43,9 +43,14 @@ public sealed class UnboundedWaitWithoutTimeoutAnalyzer : DiagnosticAnalyzer
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
         var compilation = context.Compilation;
-        var testMethods = TestMethodAnalysis.TryCreate(compilation);
         var timeout = compilation.GetTypeByMetadataName("NUnit.Framework.TimeoutAttribute");
-        if (testMethods is null || timeout is null || HasTimeout(compilation.Assembly, timeout))
+        if (timeout is null || HasTimeout(compilation.Assembly, timeout))
+        {
+            return;
+        }
+
+        var testMethods = TestMethodAnalysis.TryCreate(compilation);
+        if (testMethods is null)
         {
             return;
         }
@@ -72,8 +77,15 @@ public sealed class UnboundedWaitWithoutTimeoutAnalyzer : DiagnosticAnalyzer
     // base class does not reach the fixture at run time.
     private static bool HasTimeout(ISymbol symbol, INamedTypeSymbol timeout)
     {
-        return symbol.GetAttributes()
-            .Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass?.OriginalDefinition, timeout));
+        foreach (var attribute in symbol.GetAttributes())
+        {
+            if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass?.OriginalDefinition, timeout))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -87,91 +99,87 @@ public sealed class UnboundedWaitWithoutTimeoutAnalyzer : DiagnosticAnalyzer
         /// </summary>
         private const int MaxDepth = 2;
 
+        private static readonly string[] UniTaskWaitNames =
+            { "WaitUntil", "WaitWhile", "WaitUntilValueChanged", "WaitUntilCanceled" };
+
         private readonly Compilation _compilation;
-        private readonly ImmutableArray<INamedTypeSymbol> _predicateYieldInstructions;
-        private readonly ImmutableArray<IMethodSymbol> _predicateWaits;
+        private readonly INamedTypeSymbol? _waitUntil;
+        private readonly INamedTypeSymbol? _waitWhile;
+        private readonly INamedTypeSymbol? _uniTask;
+        private readonly INamedTypeSymbol? _timeSpan;
 
         public WaitAnalysis(Compilation compilation)
         {
             _compilation = compilation;
-            _predicateYieldInstructions = new[] { "UnityEngine.WaitUntil", "UnityEngine.WaitWhile" }
-                .Select(compilation.GetTypeByMetadataName)
-                .OfType<INamedTypeSymbol>()
-                .ToImmutableArray();
-            var uniTask = compilation.GetTypeByMetadataName("Cysharp.Threading.Tasks.UniTask");
-            _predicateWaits = uniTask is null
-                ? ImmutableArray<IMethodSymbol>.Empty
-                : new[] { "WaitUntil", "WaitWhile", "WaitUntilValueChanged", "WaitUntilCanceled" }
-                    .SelectMany(name => uniTask.GetMembers(name))
-                    .OfType<IMethodSymbol>()
-                    .ToImmutableArray();
+            _waitUntil = compilation.GetTypeByMetadataName("UnityEngine.WaitUntil");
+            _waitWhile = compilation.GetTypeByMetadataName("UnityEngine.WaitWhile");
+            _uniTask = compilation.GetTypeByMetadataName("Cysharp.Threading.Tasks.UniTask");
+            _timeSpan = compilation.GetTypeByMetadataName("System.TimeSpan");
         }
 
         public IEnumerable<(Location Location, string Name)> UnboundedWaits(IMethodSymbol method,
             CancellationToken cancellationToken)
         {
-            var walker = new Walker(this, 0, new HashSet<IMethodSymbol>(SymbolEqualityComparer.Default),
-                cancellationToken);
-            walker.VisitBody(method);
-            return walker.Waits;
-        }
+            var walker = new Walker(this, cancellationToken);
+            if (OperationAnalysis.MethodBody(_compilation, method, cancellationToken) is { } body)
+            {
+                walker.Visit(body, 0);
+            }
 
-        private IOperation? Body(IMethodSymbol method, CancellationToken cancellationToken)
-        {
-            var syntax = method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken);
-            return syntax is null
-                ? null
-                : _compilation.GetSemanticModel(syntax.SyntaxTree).GetOperation(syntax, cancellationToken);
+            return walker.Waits;
         }
 
         private bool IsPredicateWait(IMethodSymbol method)
         {
-            return _predicateWaits.Contains(method.OriginalDefinition, SymbolEqualityComparer.Default);
+            return SymbolEqualityComparer.Default.Equals(method.ContainingType, _uniTask)
+                   && Array.IndexOf(UniTaskWaitNames, method.Name) >= 0;
         }
 
-        // The overloads that take a TimeSpan timeout end by themselves, so only the single-parameter constructor counts.
+        // The overloads that take a TimeSpan timeout end by themselves.
         private bool IsPredicateYieldInstruction(IMethodSymbol constructor)
         {
-            return constructor.Parameters.Length == 1
-                   && _predicateYieldInstructions.Contains(constructor.ContainingType, SymbolEqualityComparer.Default);
+            var type = constructor.ContainingType;
+            if (!SymbolEqualityComparer.Default.Equals(type, _waitUntil)
+                && !SymbolEqualityComparer.Default.Equals(type, _waitWhile))
+            {
+                return false;
+            }
+
+            foreach (var parameter in constructor.Parameters)
+            {
+                if (SymbolEqualityComparer.Default.Equals(parameter.Type, _timeSpan))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private sealed class Walker
         {
             private readonly WaitAnalysis _analysis;
-            private readonly int _depth;
-            private readonly HashSet<IMethodSymbol> _inProgress;
             private readonly CancellationToken _cancellationToken;
+            private readonly HashSet<IMethodSymbol> _inProgress = new(SymbolEqualityComparer.Default);
 
             public List<(Location Location, string Name)> Waits { get; } = new();
 
-            public Walker(WaitAnalysis analysis, int depth, HashSet<IMethodSymbol> inProgress,
-                CancellationToken cancellationToken)
+            public Walker(WaitAnalysis analysis, CancellationToken cancellationToken)
             {
                 _analysis = analysis;
-                _depth = depth;
-                _inProgress = inProgress;
                 _cancellationToken = cancellationToken;
             }
 
-            public void VisitBody(IMethodSymbol method)
-            {
-                if (_analysis.Body(method, _cancellationToken) is { } body)
-                {
-                    Visit(body);
-                }
-            }
-
-            private void Visit(IOperation operation)
+            public void Visit(IOperation operation, int depth)
             {
                 _cancellationToken.ThrowIfCancellationRequested();
                 switch (operation)
                 {
                     case IAnonymousFunctionOperation lambda:
-                        VisitNested(lambda.Body);
+                        VisitNested(lambda.Body, depth);
                         return;
-                    case ILocalFunctionOperation localFunction:
-                        VisitNested(localFunction.Body);
+                    case ILocalFunctionOperation { Body: { } body }:
+                        VisitNested(body, depth);
                         return;
                     case IWhileLoopOperation loop when YieldsOrAwaits(loop.Body):
                         Waits.Add((LoopKeyword(loop), loop.ConditionIsTop ? "while" : "do"));
@@ -185,75 +193,73 @@ public sealed class UnboundedWaitWithoutTimeoutAnalyzer : DiagnosticAnalyzer
                         Waits.Add((operation.Syntax.GetLocation(), constructor.ContainingType.Name));
                         return;
                     case IAwaitOperation { Operation: IInvocationOperation awaited }:
-                        VisitCallee(awaited);
+                        VisitCallee(awaited, depth);
                         break;
                     // The yielded IEnumerator is wrapped in an implicit conversion to object.
                     case IReturnOperation { Kind: OperationKind.YieldReturn, ReturnedValue: { } returned }
-                        when WithoutConversions(returned) is IInvocationOperation yielded:
-                        VisitCallee(yielded);
+                        when OperationAnalysis.WithoutImplicitConversions(returned) is IInvocationOperation yielded:
+                        VisitCallee(yielded, depth);
                         break;
                 }
 
                 foreach (var child in operation.ChildOperations)
                 {
-                    Visit(child);
+                    Visit(child, depth);
                 }
             }
 
-            private void VisitNested(IOperation? body)
+            private void VisitNested(IOperation body, int depth)
             {
-                if (body is null || _depth >= MaxDepth)
+                if (depth < MaxDepth)
                 {
-                    return;
+                    Visit(body, depth + 1);
                 }
-
-                var nested = new Walker(_analysis, _depth + 1, _inProgress, _cancellationToken);
-                nested.Visit(body);
-                Waits.AddRange(nested.Waits);
             }
 
             // A local function is walked where it is declared, so following its invocation would report it twice.
             // Results are not cached across call sites, as in UTF5001: the walk is bounded by MaxDepth instead.
-            private void VisitCallee(IInvocationOperation invocation)
+            private void VisitCallee(IInvocationOperation invocation, int depth)
             {
                 var callee = invocation.TargetMethod.OriginalDefinition;
-                if (_depth >= MaxDepth || callee.MethodKind == MethodKind.LocalFunction || !_inProgress.Add(callee))
+                if (depth >= MaxDepth
+                    || callee.MethodKind == MethodKind.LocalFunction
+                    || callee.DeclaringSyntaxReferences.IsEmpty
+                    || !_inProgress.Add(callee))
                 {
                     return;
                 }
 
-                var nested = new Walker(_analysis, _depth + 1, _inProgress, _cancellationToken);
-                nested.VisitBody(callee);
-                _inProgress.Remove(callee);
-                if (nested.Waits.Count > 0)
+                // A wait inside the callee is reported once, at the call site, whatever it is and wherever it is.
+                var before = Waits.Count;
+                if (OperationAnalysis.MethodBody(_analysis._compilation, callee, _cancellationToken) is { } body)
                 {
+                    Visit(body, depth + 1);
+                }
+
+                _inProgress.Remove(callee);
+                if (Waits.Count > before)
+                {
+                    Waits.RemoveRange(before, Waits.Count - before);
                     Waits.Add((invocation.Syntax.GetLocation(), callee.Name));
                 }
             }
 
-            private static IOperation WithoutConversions(IOperation operation)
+            // A yield or await inside a lambda or local function belongs to that body, not to the loop.
+            private static bool YieldsOrAwaits(IOperation operation)
             {
-                while (operation is IConversionOperation { IsImplicit: true } conversion)
+                switch (operation)
                 {
-                    operation = conversion.Operand;
+                    case IAnonymousFunctionOperation:
+                    case ILocalFunctionOperation:
+                        return false;
+                    case IAwaitOperation:
+                    case IReturnOperation { Kind: OperationKind.YieldReturn }:
+                        return true;
                 }
 
-                return operation;
-            }
-
-            // A yield or await inside a lambda or local function belongs to that body, not to the loop.
-            private static bool YieldsOrAwaits(IOperation body)
-            {
-                return body.DescendantsAndSelf()
-                    .Any(o => o is IAwaitOperation or IReturnOperation { Kind: OperationKind.YieldReturn }
-                              && !IsInsideFunction(o, body));
-            }
-
-            private static bool IsInsideFunction(IOperation operation, IOperation body)
-            {
-                for (var parent = operation.Parent; parent is not null && parent != body; parent = parent.Parent)
+                foreach (var child in operation.ChildOperations)
                 {
-                    if (parent is IAnonymousFunctionOperation or ILocalFunctionOperation)
+                    if (YieldsOrAwaits(child))
                     {
                         return true;
                     }

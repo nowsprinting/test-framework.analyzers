@@ -6,6 +6,7 @@ using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -20,7 +21,8 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
         title: "ApplyToTest, ApplyToContext, and Wrap must not throw exceptions",
-        messageFormat: "'{0}' must not throw exceptions: the fixture is discarded or the test run aborts. Set RunState to NotRunnable in ApplyToTest instead.",
+        messageFormat:
+        "'{0}' must not throw exceptions: the fixture is discarded or the test run aborts. Set RunState to NotRunnable in ApplyToTest instead.",
         category: "Extensions",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
@@ -151,9 +153,7 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
                 return walker;
             }
 
-            var syntax = method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken);
-            if (syntax is not null
-                && _compilation.GetSemanticModel(syntax.SyntaxTree).GetOperation(syntax, cancellationToken) is { } body)
+            if (OperationAnalysis.MethodBody(_compilation, method, cancellationToken) is { } body)
             {
                 foreach (var child in body.ChildOperations)
                 {
@@ -248,13 +248,9 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
             // every catch clause of a base type look like a mismatch.
             private static ITypeSymbol? ThrownType(IThrowOperation throwOperation)
             {
-                var exception = throwOperation.Exception;
-                while (exception is IConversionOperation { IsImplicit: true } conversion)
-                {
-                    exception = conversion.Operand;
-                }
-
-                return exception?.Type;
+                return throwOperation.Exception is { } exception
+                    ? OperationAnalysis.WithoutImplicitConversions(exception).Type
+                    : null;
             }
 
             private void VisitTry(ITryOperation tryOperation, ITypeSymbol? caughtType)

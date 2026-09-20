@@ -20,10 +20,6 @@ namespace UTF.Analyzers.Tests.TestData.UTF4001
             yield return SceneManager.UnloadSceneAsync("Stage");
             yield return new WaitUntil(() => _flag, TimeSpan.FromSeconds(5), () => { }, WaitTimeoutMode.Realtime);
             yield return new WaitWhile(() => !_flag, TimeSpan.FromSeconds(5), () => { }, WaitTimeoutMode.Realtime);
-            foreach (var frame in new[] { 1, 2, 3 })
-            {
-                yield return null;
-            }
         }
     }
 }

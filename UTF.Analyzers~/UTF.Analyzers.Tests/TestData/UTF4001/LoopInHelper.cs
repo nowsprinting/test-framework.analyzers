@@ -1,6 +1,5 @@
 using System.Collections;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
 
 namespace UTF.Analyzers.Tests.TestData.UTF4001

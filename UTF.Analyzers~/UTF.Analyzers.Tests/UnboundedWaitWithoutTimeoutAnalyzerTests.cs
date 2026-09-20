@@ -15,7 +15,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("UniTaskWaitWhileWithState", 15, 19, "UniTask.WaitWhile")]
         [InlineData("UniTaskWaitUntilValueChanged", 15, 19, "UniTask.WaitUntilValueChanged")]
         [InlineData("UniTaskWaitUntilCanceled", 15, 19, "UniTask.WaitUntilCanceled")]
-        [InlineData("LoopInHelper", 16, 26, "WaitForFlag")]
+        [InlineData("LoopInHelper", 15, 26, "WaitForFlag")]
         [InlineData("LoopInNestedHelper", 15, 19, "WaitForFlagAsync")]
         [InlineData("WaitUntilInHelper", 16, 26, "WaitForFlag")]
         [InlineData("LoopInLambda", 18, 17, "while")]

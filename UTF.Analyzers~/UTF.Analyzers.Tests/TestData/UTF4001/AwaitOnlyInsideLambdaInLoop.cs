@@ -15,8 +15,8 @@ namespace UTF.Analyzers.Tests.TestData.UTF4001
         {
             while (!_flag)
             {
-                Func<Task> bounded = async () => await UniTask.NextFrame();
-                _flag = true;
+                Func<Task>? bounded = async () => await UniTask.NextFrame();
+                bounded = null;
             }
 
             await UniTask.NextFrame();
