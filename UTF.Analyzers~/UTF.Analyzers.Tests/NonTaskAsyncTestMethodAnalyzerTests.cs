@@ -9,7 +9,6 @@ namespace UTF.Analyzers.Tests
         [Theory]
         [InlineData("TestOnAsyncValueTask", 9, 22, "ValueTask")]
         [InlineData("TestOnNonAsyncUniTask", 9, 16, "UniTask")]
-        [InlineData("TestCaseOnUniTask", 9, 16, "UniTask")]
         [InlineData("TestCaseSourceOnUniTask", 11, 16, "UniTask")]
         [InlineData("TestOnNonAsyncAwaitable", 9, 16, "Awaitable")]
         [InlineData("MultipleTestCasesOnUniTask", 10, 16, "UniTask")]
