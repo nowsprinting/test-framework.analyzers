@@ -96,16 +96,75 @@ internal sealed class WaitAnalysis
                && Array.IndexOf(UniTaskTimeoutNames, outer.Name) >= 0;
     }
 
-    // The direction of the comparison and the shape of the condition are not checked: "while (Time.time > start)"
-    // and "while (!_flag || Time.time < deadline)" are taken as bounded, since no one writes them on purpose.
-    // The condition is null only in error scenarios; the loop is then reported as usual.
-    private bool ReadsClock(IOperation? condition)
+    // A loop is a deadline when its condition reads a clock, or when it compares a variable that the body advances
+    // from a clock ("elapsed += Time.deltaTime"). The direction of the comparison and the shape of the condition
+    // are not checked: "while (Time.time > start)" and "while (!_flag || Time.time < deadline)" are taken as
+    // bounded, since no one writes them on purpose. The condition is null only in error scenarios; the loop is then
+    // reported as usual.
+    private bool IsDeadline(IWhileLoopOperation loop)
     {
-        if (condition is null)
+        if (loop.Condition is not { } condition)
         {
             return false;
         }
 
+        if (ReadsClock(condition))
+        {
+            return true;
+        }
+
+        var compared = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+        CollectVariables(condition, compared);
+        return compared.Count > 0 && AssignsClock(loop.Body, compared);
+    }
+
+    private static void CollectVariables(IOperation operation, HashSet<ISymbol> variables)
+    {
+        switch (operation)
+        {
+            case ILocalReferenceOperation local:
+                variables.Add(local.Local);
+                break;
+            case IFieldReferenceOperation field:
+                variables.Add(field.Field);
+                break;
+        }
+
+        foreach (var child in operation.ChildOperations)
+        {
+            CollectVariables(child, variables);
+        }
+    }
+
+    private bool AssignsClock(IOperation operation, HashSet<ISymbol> variables)
+    {
+        if (operation is IAssignmentOperation assignment && ReadsClock(assignment.Value))
+        {
+            ISymbol? target = assignment.Target switch
+            {
+                ILocalReferenceOperation local => local.Local,
+                IFieldReferenceOperation field => field.Field,
+                _ => null,
+            };
+            if (target is not null && variables.Contains(target))
+            {
+                return true;
+            }
+        }
+
+        foreach (var child in operation.ChildOperations)
+        {
+            if (AssignsClock(child, variables))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool ReadsClock(IOperation condition)
+    {
         var member = condition switch
         {
             IMemberReferenceOperation reference => reference.Member,
@@ -174,7 +233,7 @@ internal sealed class WaitAnalysis
                 case ILocalFunctionOperation { Body: { } body }:
                     VisitNested(body, depth);
                     return;
-                case IWhileLoopOperation loop when YieldsOrAwaits(loop.Body) && !_analysis.ReadsClock(loop.Condition):
+                case IWhileLoopOperation loop when YieldsOrAwaits(loop.Body) && !_analysis.IsDeadline(loop):
                     Found.Add((LoopKeyword(loop), loop.ConditionIsTop ? "while" : "do"));
                     return;
                 // A CancellationToken argument does not bound the wait: the test runner never cancels it.

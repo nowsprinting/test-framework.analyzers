@@ -52,6 +52,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("HelperWithTimeoutChain")]
         [InlineData("DeadlineLoop")]
         [InlineData("DeadlineLoopInHelper")]
+        [InlineData("AccumulatedDeltaTimeLoop")]
         public async Task TimeoutPresentOrBoundedWait_NoDiagnostic(string fixture)
         {
             await Verifier.VerifyAsync($"UTF4001/{fixture}.cs");
