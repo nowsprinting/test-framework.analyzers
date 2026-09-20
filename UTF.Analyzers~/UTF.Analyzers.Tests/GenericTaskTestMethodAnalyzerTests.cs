@@ -20,7 +20,7 @@ namespace UTF.Analyzers.Tests
         [Theory]
         [InlineData("TestCaseOnTask")]
         [InlineData("TestCaseWithExpectedResultOnSync")]
-        [InlineData("TestOnGenericValueTask")]
+        [InlineData("TestCaseWithExpectedResultOnGenericCollection")]
         [InlineData("GenericTaskWithoutTestAttribute")]
         public async Task NotGenericTaskOrNotTestMethod_NoDiagnostic(string fixture)
         {
