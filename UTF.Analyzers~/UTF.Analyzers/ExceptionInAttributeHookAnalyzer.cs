@@ -121,6 +121,11 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
     /// </summary>
     private sealed class EscapeAnalysis
     {
+        /// <summary>
+        /// Number of calls followed from the hook method before a callee is treated as not throwing.
+        /// </summary>
+        private const int MaxCallDepth = 5;
+
         private readonly Compilation _compilation;
         private readonly INamedTypeSymbol _exception;
 
@@ -160,10 +165,19 @@ public sealed class ExceptionInAttributeHookAnalyzer : DiagnosticAnalyzer
         }
 
         // Results are not cached across call sites: a cycle cut by the recursion guard would leave a callee's result
-        // incomplete, and the hook methods this analysis starts from are few and small.
+        // incomplete, and the hook methods this analysis starts from are few and small. The depth cap bounds the
+        // walk instead: each callee costs a semantic model of its file and an uncached re-walk of its body, so an
+        // unbounded chain from a hook into a deep helper graph would re-bind other files on every keystroke in the IDE.
+        // ponytail: a throw deeper than MaxCallDepth calls is silently missed, add memoization if that ever matters.
         private ImmutableArray<ITypeSymbol> EscapesFrom(IMethodSymbol callee, HashSet<IMethodSymbol> inProgress,
             CancellationToken cancellationToken)
         {
+            // inProgress holds the hook method itself, so its count is the depth of the caller plus one.
+            if (inProgress.Count > MaxCallDepth)
+            {
+                return ImmutableArray<ITypeSymbol>.Empty;
+            }
+
             callee = callee.OriginalDefinition;
             if (!inProgress.Add(callee))
             {

@@ -25,6 +25,13 @@ namespace UTF.Analyzers.Tests
                 Verifier.Diagnostic().WithLocation(line, 25).WithArguments(boundType));
         }
 
+        [Fact]
+        public async Task ConstraintInOuterBlockVariable_ReportsAtActualArgument()
+        {
+            await Verifier.VerifyAsync("UTF2004/ConstraintInOuterBlockVariable.cs",
+                Verifier.Diagnostic().WithLocation(18, 29).WithArguments("ActualValueDelegate<bool>"));
+        }
+
         [Theory]
         [InlineData("GoodShapes")]
         [InlineData("AsyncLambdaOwnedByUTF2003")]

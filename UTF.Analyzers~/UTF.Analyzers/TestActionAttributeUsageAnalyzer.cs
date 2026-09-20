@@ -110,7 +110,7 @@ public sealed class TestActionAttributeUsageAnalyzer : DiagnosticAnalyzer
         }
 
         var (supported, targetsText, supportedText) = Describe(ResolveTargets(symbol, targetsProperty, testActionAttribute, cancellationToken));
-        if ((ActionAttributeAnalysis.EffectiveValidOn(symbol, attributeUsage) & ~supported) == 0)
+        if ((ActionAttributeAnalysis.EffectiveValidOn(symbol, attributeUsage) & ~supported) == (AttributeTargets)0)
         {
             return;
         }

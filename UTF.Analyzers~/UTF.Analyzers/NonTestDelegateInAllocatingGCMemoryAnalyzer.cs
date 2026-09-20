@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -60,7 +61,7 @@ public sealed class NonTestDelegateInAllocatingGCMemoryAnalyzer : DiagnosticAnal
             // ActualValueDelegate<TActual>, or TActual), so it is located by ordinal rather than by parameter type.
             var actual = invocation.Arguments.FirstOrDefault(a => a.Parameter?.Ordinal == 0);
             if (actual is null || SymbolEqualityComparer.Default.Equals(actual.Parameter!.Type, testDelegate) ||
-                !ChainCreates(analysis.ConstraintArgument(invocation), allocating))
+                !ChainCreates(analysis.ConstraintArgument(invocation), allocating, operationContext.CancellationToken))
             {
                 return;
             }
@@ -84,8 +85,10 @@ public sealed class NonTestDelegateInAllocatingGCMemoryAnalyzer : DiagnosticAnal
     /// does not do this because a variable-held Throws constraint is deliberately left to UTF2003.
     /// ponytail: reassignment after the initializer is not seen, add flow analysis if it ever matters.
     /// </summary>
-    private static bool ChainCreates(IOperation? constraint, INamedTypeSymbol constraintType)
+    private static bool ChainCreates(IOperation? constraint, INamedTypeSymbol constraintType,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         foreach (var node in AsyncDelegateAnalysis.ConstraintChain(constraint))
         {
             switch (node)
@@ -96,23 +99,26 @@ public sealed class NonTestDelegateInAllocatingGCMemoryAnalyzer : DiagnosticAnal
                     creation.Type?.OriginalDefinition, constraintType):
                     return true;
                 case ILocalReferenceOperation local:
-                    return ChainCreates(Initializer(local), constraintType);
+                    return ChainCreates(Initializer(local, cancellationToken), constraintType, cancellationToken);
             }
         }
 
         return false;
     }
 
-    private static IOperation? Initializer(ILocalReferenceOperation reference)
+    /// <summary>
+    /// The declarator is resolved from the local's declaring syntax rather than by scanning the enclosing method's
+    /// operation tree: a scan costs the size of the method on every reference, and a local is declared in the same
+    /// tree as its reference, so the operation's own semantic model resolves it without RS1030.
+    /// </summary>
+    private static IOperation? Initializer(ILocalReferenceOperation reference, CancellationToken cancellationToken)
     {
-        var root = (IOperation)reference;
-        while (root.Parent is not null)
-        {
-            root = root.Parent;
-        }
-
-        return root.Descendants().OfType<IVariableDeclaratorOperation>()
-            .FirstOrDefault(d => SymbolEqualityComparer.Default.Equals(d.Symbol, reference.Local))
+        // A foreach variable, out var, or pattern local has declaring syntax that is not a declarator and yields null,
+        // the same as a declarator without an initializer.
+        var syntax = reference.Local.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken);
+        return syntax is null
+            ? null
+            : (reference.SemanticModel?.GetOperation(syntax, cancellationToken) as IVariableDeclaratorOperation)
             ?.Initializer?.Value;
     }
 }

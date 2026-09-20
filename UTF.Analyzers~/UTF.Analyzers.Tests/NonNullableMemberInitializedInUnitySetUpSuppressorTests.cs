@@ -40,6 +40,16 @@ namespace UTF.Analyzers.Tests
         }
 
         [Fact]
+        public async Task SeveralMembersInOneClass_SuppressesOnlyAssignedOnes()
+        {
+            await Verifier.VerifyAsync(new Test { SpecificDiagnosticOptions = IgnoreMissingXmlComments },
+                "UTF3002/MembersAssignedAndUnassignedInUnitySetUp.cs",
+                CS8618(9, 24).WithIsSuppressed(true),
+                CS8618(10, 24).WithIsSuppressed(true),
+                CS8618(11, 24));
+        }
+
+        [Fact]
         public async Task DisabledByNoWarn_DoesNotSuppress()
         {
             var test = new Test
