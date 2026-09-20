@@ -161,7 +161,7 @@ internal sealed class AsyncDelegateAnalysis
     private static bool IsAsyncDelegate(IArgumentOperation argument)
     {
         var invoke = ((INamedTypeSymbol)argument.Parameter!.Type).DelegateInvokeMethod;
-        if (invoke is not null && IsAwaitable(invoke.ReturnType))
+        if (invoke is not null && AwaitableAnalysis.IsAwaitable(invoke.ReturnType))
         {
             return true;
         }
@@ -173,23 +173,6 @@ internal sealed class AsyncDelegateAnalysis
             IMethodReferenceOperation reference => reference.Method.IsAsync,
             _ => false,
         };
-    }
-
-    /// <summary>
-    /// The awaitable pattern is matched by member name because the language defines it that way; there is no symbol
-    /// to compare against. Extension-method GetAwaiter is not resolved, which is a known limitation of the rules.
-    /// </summary>
-    private static bool IsAwaitable(ITypeSymbol type)
-    {
-        foreach (var member in type.GetMembers("GetAwaiter"))
-        {
-            if (member is IMethodSymbol { IsStatic: false, Parameters.IsEmpty: true, TypeParameters.IsEmpty: true })
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /// <summary>
