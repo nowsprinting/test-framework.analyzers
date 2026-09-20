@@ -71,6 +71,7 @@ Rules about code that works but is not recommended.
 
 | Id | Title | Severity |
 |----|-------|----------|
+| [UTF4001](Documentation~/rules/UTF4001.md) | Test methods that wait for a condition must have a Timeout attribute | ❌ |
 
 ### Extensions (UTF5xxx)
 
