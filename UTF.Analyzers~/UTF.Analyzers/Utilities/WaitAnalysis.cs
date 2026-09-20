@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 
 namespace UTF.Analyzers.Utilities;
@@ -234,7 +233,7 @@ internal sealed class WaitAnalysis
                     VisitNested(body, depth);
                     return;
                 case IWhileLoopOperation loop when YieldsOrAwaits(loop.Body) && !_analysis.IsDeadline(loop):
-                    Found.Add((LoopKeyword(loop), loop.ConditionIsTop ? "while" : "do"));
+                    Found.Add((OperationAnalysis.LoopKeyword(loop), loop.ConditionIsTop ? "while" : "do"));
                     return;
                 // A CancellationToken argument does not bound the wait: the test runner never cancels it.
                 case IInvocationOperation invocation when _analysis.IsPredicateWait(invocation.TargetMethod):
@@ -325,14 +324,5 @@ internal sealed class WaitAnalysis
             return false;
         }
 
-        private static Location LoopKeyword(IWhileLoopOperation loop)
-        {
-            return loop.Syntax switch
-            {
-                WhileStatementSyntax w => w.WhileKeyword.GetLocation(),
-                DoStatementSyntax d => d.DoKeyword.GetLocation(),
-                var s => s.GetLocation(),
-            };
-        }
     }
 }

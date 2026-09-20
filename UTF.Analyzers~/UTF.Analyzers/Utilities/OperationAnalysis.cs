@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 
 namespace UTF.Analyzers.Utilities;
@@ -33,5 +34,18 @@ internal static class OperationAnalysis
         }
 
         return operation;
+    }
+
+    /// <summary>
+    /// The location of the while or do keyword of a loop, where a diagnostic about the loop is reported.
+    /// </summary>
+    public static Location LoopKeyword(IWhileLoopOperation loop)
+    {
+        return loop.Syntax switch
+        {
+            WhileStatementSyntax w => w.WhileKeyword.GetLocation(),
+            DoStatementSyntax d => d.DoKeyword.GetLocation(),
+            var s => s.GetLocation(),
+        };
     }
 }
