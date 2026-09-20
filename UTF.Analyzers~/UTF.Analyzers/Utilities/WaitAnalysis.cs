@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 
 namespace UTF.Analyzers.Utilities;
@@ -13,11 +12,6 @@ namespace UTF.Analyzers.Utilities;
 /// </summary>
 internal sealed class WaitAnalysis
 {
-    /// <summary>
-    /// Deepest body that is walked; the analyzed method body is depth 0.
-    /// </summary>
-    private const int MaxDepth = 2;
-
     private static readonly string[] UniTaskWaitNames =
         { "WaitUntil", "WaitWhile", "WaitUntilValueChanged", "WaitUntilCanceled" };
 
@@ -208,34 +202,23 @@ internal sealed class WaitAnalysis
         return true;
     }
 
-    private sealed class Walker
+    private sealed class Walker : DepthBoundedWalker
     {
         private readonly WaitAnalysis _analysis;
-        private readonly CancellationToken _cancellationToken;
-        private readonly HashSet<IMethodSymbol> _inProgress = new(SymbolEqualityComparer.Default);
-
-        public List<(Location Location, string Name)> Found { get; } = new();
 
         public Walker(WaitAnalysis analysis, CancellationToken cancellationToken)
+            : base(analysis._compilation, cancellationToken)
         {
             _analysis = analysis;
-            _cancellationToken = cancellationToken;
         }
 
-        public void Visit(IOperation operation, int depth)
+        protected override bool TryMatch(IOperation operation)
         {
-            _cancellationToken.ThrowIfCancellationRequested();
             switch (operation)
             {
-                case IAnonymousFunctionOperation lambda:
-                    VisitNested(lambda.Body, depth);
-                    return;
-                case ILocalFunctionOperation { Body: { } body }:
-                    VisitNested(body, depth);
-                    return;
                 case IWhileLoopOperation loop when YieldsOrAwaits(loop.Body) && !_analysis.IsDeadline(loop):
-                    Found.Add((LoopKeyword(loop), loop.ConditionIsTop ? "while" : "do"));
-                    return;
+                    Found.Add((OperationAnalysis.LoopKeyword(loop), loop.ConditionIsTop ? "while" : "do"));
+                    return true;
                 // A CancellationToken argument does not bound the wait: the test runner never cancels it.
                 case IInvocationOperation invocation when _analysis.IsPredicateWait(invocation.TargetMethod):
                     if (!_analysis.IsTimeoutReceiver(invocation))
@@ -244,60 +227,25 @@ internal sealed class WaitAnalysis
                             $"{invocation.TargetMethod.ContainingType.Name}.{invocation.TargetMethod.Name}"));
                     }
 
-                    return;
+                    return true;
                 case IObjectCreationOperation { Constructor: { } constructor }
                     when _analysis.IsPredicateYieldInstruction(constructor):
                     Found.Add((operation.Syntax.GetLocation(), constructor.ContainingType.Name));
-                    return;
-                case IAwaitOperation { Operation: IInvocationOperation awaited }:
-                    VisitCallee(awaited, depth);
-                    break;
-                // The yielded IEnumerator is wrapped in an implicit conversion to object.
-                case IReturnOperation { Kind: OperationKind.YieldReturn, ReturnedValue: { } returned }
-                    when OperationAnalysis.WithoutImplicitConversions(returned) is IInvocationOperation yielded:
-                    VisitCallee(yielded, depth);
-                    break;
-            }
-
-            foreach (var child in operation.ChildOperations)
-            {
-                Visit(child, depth);
+                    return true;
+                default:
+                    return false;
             }
         }
 
-        private void VisitNested(IOperation body, int depth)
+        // A wait inside the callee is reported once, at the call site, whatever it is and wherever it is.
+        protected override void VisitCallee(IInvocationOperation invocation, int depth)
         {
-            if (depth < MaxDepth)
-            {
-                Visit(body, depth + 1);
-            }
-        }
-
-        // A local function is walked where it is declared, so following its invocation would report it twice.
-        // Results are not cached across call sites, as in UTF5001: the walk is bounded by MaxDepth instead.
-        private void VisitCallee(IInvocationOperation invocation, int depth)
-        {
-            var callee = invocation.TargetMethod.OriginalDefinition;
-            if (depth >= MaxDepth
-                || callee.MethodKind == MethodKind.LocalFunction
-                || callee.DeclaringSyntaxReferences.IsEmpty
-                || !_inProgress.Add(callee))
-            {
-                return;
-            }
-
-            // A wait inside the callee is reported once, at the call site, whatever it is and wherever it is.
             var before = Found.Count;
-            if (OperationAnalysis.MethodBody(_analysis._compilation, callee, _cancellationToken) is { } body)
-            {
-                Visit(body, depth + 1);
-            }
-
-            _inProgress.Remove(callee);
+            base.VisitCallee(invocation, depth);
             if (Found.Count > before)
             {
                 Found.RemoveRange(before, Found.Count - before);
-                Found.Add((invocation.Syntax.GetLocation(), callee.Name));
+                Found.Add((invocation.Syntax.GetLocation(), invocation.TargetMethod.OriginalDefinition.Name));
             }
         }
 
@@ -323,16 +271,6 @@ internal sealed class WaitAnalysis
             }
 
             return false;
-        }
-
-        private static Location LoopKeyword(IWhileLoopOperation loop)
-        {
-            return loop.Syntax switch
-            {
-                WhileStatementSyntax w => w.WhileKeyword.GetLocation(),
-                DoStatementSyntax d => d.DoKeyword.GetLocation(),
-                var s => s.GetLocation(),
-            };
         }
     }
 }
