@@ -22,7 +22,7 @@ public sealed class UnboundedWaitWithoutTimeoutAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
-        "Detects a test method that waits for a condition with no time limit of its own, when neither the method, its containing type, nor the assembly has a Timeout attribute. A while or do loop that yields or awaits in its body, and a call to WaitUntil, WaitWhile, or the UniTask.WaitUntil family that is not bounded by a timeout, are recognized, directly in the test method or in helpers, lambdas, and local functions up to two levels deep. When the condition never holds, such a test runs until the 180-second default timeout of Unity Test Framework.",
+        "Detects a test method that waits for a condition with no time limit of its own, when neither the method, its containing type, nor the assembly has a Timeout attribute. A while or do loop that yields or awaits in its body and does not compare a clock in its condition, and a call to WaitUntil, WaitWhile, or the UniTask.WaitUntil family that is not bounded by a timeout, are recognized, directly in the test method or in helpers, lambdas, and local functions up to two levels deep. When the condition never holds, such a test runs until the 180-second default timeout of Unity Test Framework.",
         helpLinkUri:
         "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF4001.md");
 

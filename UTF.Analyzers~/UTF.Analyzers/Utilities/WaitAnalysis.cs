@@ -23,12 +23,22 @@ internal sealed class WaitAnalysis
 
     private static readonly string[] UniTaskTimeoutNames = { "Timeout", "TimeoutWithoutException" };
 
+    // Types whose members are read to get the current time or frame. A loop whose condition reads one of them ends
+    // when the deadline passes. The whole type is matched rather than each clock member (Time.time,
+    // DateTime.UtcNow, Stopwatch.ElapsedMilliseconds, ...): the non-clock members (Time.timeScale, DateTime.Year)
+    // make no sense in a wait condition, so a member list would only add maintenance.
+    private static readonly string[] ClockTypeNames =
+    {
+        "UnityEngine.Time", "System.DateTime", "System.DateTimeOffset", "System.Diagnostics.Stopwatch"
+    };
+
     private readonly Compilation _compilation;
     private readonly INamedTypeSymbol? _waitUntil;
     private readonly INamedTypeSymbol? _waitWhile;
     private readonly INamedTypeSymbol? _uniTask;
     private readonly INamedTypeSymbol? _uniTaskExtensions;
     private readonly INamedTypeSymbol? _timeSpan;
+    private readonly HashSet<INamedTypeSymbol> _clockTypes = new(SymbolEqualityComparer.Default);
 
     public WaitAnalysis(Compilation compilation)
     {
@@ -38,6 +48,13 @@ internal sealed class WaitAnalysis
         _uniTask = compilation.GetTypeByMetadataName("Cysharp.Threading.Tasks.UniTask");
         _uniTaskExtensions = compilation.GetTypeByMetadataName("Cysharp.Threading.Tasks.UniTaskExtensions");
         _timeSpan = compilation.GetTypeByMetadataName("System.TimeSpan");
+        foreach (var name in ClockTypeNames)
+        {
+            if (compilation.GetTypeByMetadataName(name) is { } clock)
+            {
+                _clockTypes.Add(clock);
+            }
+        }
     }
 
     /// <summary>
@@ -77,6 +94,38 @@ internal sealed class WaitAnalysis
         return parent is IInvocationOperation { TargetMethod: { } outer }
                && SymbolEqualityComparer.Default.Equals(outer.ContainingType, _uniTaskExtensions)
                && Array.IndexOf(UniTaskTimeoutNames, outer.Name) >= 0;
+    }
+
+    // The direction of the comparison and the shape of the condition are not checked: "while (Time.time > start)"
+    // and "while (!_flag || Time.time < deadline)" are taken as bounded, since no one writes them on purpose.
+    // The condition is null only in error scenarios; the loop is then reported as usual.
+    private bool ReadsClock(IOperation? condition)
+    {
+        if (condition is null)
+        {
+            return false;
+        }
+
+        var member = condition switch
+        {
+            IMemberReferenceOperation reference => reference.Member,
+            IInvocationOperation invocation => invocation.TargetMethod,
+            _ => null,
+        };
+        if (member is not null && _clockTypes.Contains(member.ContainingType))
+        {
+            return true;
+        }
+
+        foreach (var child in condition.ChildOperations)
+        {
+            if (ReadsClock(child))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // The overloads that take a TimeSpan timeout end by themselves.
@@ -125,7 +174,7 @@ internal sealed class WaitAnalysis
                 case ILocalFunctionOperation { Body: { } body }:
                     VisitNested(body, depth);
                     return;
-                case IWhileLoopOperation loop when YieldsOrAwaits(loop.Body):
+                case IWhileLoopOperation loop when YieldsOrAwaits(loop.Body) && !_analysis.ReadsClock(loop.Condition):
                     Found.Add((LoopKeyword(loop), loop.ConditionIsTop ? "while" : "do"));
                     return;
                 // A CancellationToken argument does not bound the wait: the test runner never cancels it.
