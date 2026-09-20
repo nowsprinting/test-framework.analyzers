@@ -36,8 +36,10 @@ public sealed class NonNullableMemberInitializedInUnitySetUpSuppressor : Diagnos
             return;
         }
 
-        // Every CS8618 in a class shares the same setup methods, so they are resolved once per class.
-        var setUpMethodsByClass = new Dictionary<ClassDeclarationSyntax, List<MethodDeclarationSyntax>>();
+        // The setup methods of a class are walked once and the members they assign are kept as a set, so each CS8618 of
+        // that class is a lookup; walking the setup methods again for each member would cost the size of the setup
+        // code per uninitialized member.
+        var assignedByClass = new Dictionary<ClassDeclarationSyntax, HashSet<ISymbol>>();
 
         foreach (var diagnostic in context.ReportedDiagnostics)
         {
@@ -63,91 +65,137 @@ public sealed class NonNullableMemberInitializedInUnitySetUpSuppressor : Diagnos
                 continue;
             }
 
-            if (!setUpMethodsByClass.TryGetValue(classDeclaration, out var setUpMethods))
+            if (!assignedByClass.TryGetValue(classDeclaration, out var assigned))
             {
-                setUpMethods = classDeclaration.Members.OfType<MethodDeclarationSyntax>()
-                    .Where(method =>
-                        UnityHookMethodAnalysis.HasAnyAttribute(
-                            model.GetDeclaredSymbol(method, context.CancellationToken) as IMethodSymbol, unitySetUp,
-                            unityOneTimeSetUp))
-                    .ToList();
-                setUpMethodsByClass.Add(classDeclaration, setUpMethods);
+                assigned = AssignedMembers(context, model, classDeclaration, unitySetUp, unityOneTimeSetUp);
+                assignedByClass.Add(classDeclaration, assigned);
             }
 
-            if (setUpMethods.Any(method => new AssignmentWalker(model, member).IsAssignedIn(method)))
+            if (assigned.Contains(member))
             {
                 context.ReportSuppression(Suppression.Create(Rule, diagnostic));
             }
         }
     }
 
+    private static HashSet<ISymbol> AssignedMembers(SuppressionAnalysisContext context, SemanticModel model,
+        ClassDeclarationSyntax classDeclaration, INamedTypeSymbol? unitySetUp, INamedTypeSymbol? unityOneTimeSetUp)
+    {
+        var walker = new AssignmentWalker(context,
+            model.GetDeclaredSymbol(classDeclaration, context.CancellationToken) as INamedTypeSymbol);
+        foreach (var method in classDeclaration.Members.OfType<MethodDeclarationSyntax>())
+        {
+            if (UnityHookMethodAnalysis.HasAnyAttribute(
+                    model.GetDeclaredSymbol(method, context.CancellationToken) as IMethodSymbol, unitySetUp,
+                    unityOneTimeSetUp))
+            {
+                walker.Visit(method);
+            }
+        }
+
+        return walker.Assigned;
+    }
+
     /// <summary>
-    /// Finds an unconditional assignment to one member, following calls into methods of the same type.
+    /// Collects the members of one type that are unconditionally assigned, following calls into methods of the same type.
     /// </summary>
     private sealed class AssignmentWalker
     {
-        private readonly SemanticModel _model;
-        private readonly ISymbol _member;
+        private readonly SuppressionAnalysisContext _context;
+        private readonly INamedTypeSymbol? _type;
         private readonly HashSet<MethodDeclarationSyntax> _visited = new();
 
-        public AssignmentWalker(SemanticModel model, ISymbol member)
+        public HashSet<ISymbol> Assigned { get; } = new(SymbolEqualityComparer.Default);
+
+        public AssignmentWalker(SuppressionAnalysisContext context, INamedTypeSymbol? type)
         {
-            _model = model;
-            _member = member;
+            _context = context;
+            _type = type;
         }
 
-        public bool IsAssignedIn(MethodDeclarationSyntax method)
+        public void Visit(MethodDeclarationSyntax method)
         {
             if (!_visited.Add(method))
             {
-                return false;
+                return;
             }
 
             if (method.ExpressionBody is not null)
             {
-                return IsAssignedIn(method.ExpressionBody.Expression);
+                Visit(method.ExpressionBody.Expression);
             }
-
-            return method.Body is not null && IsAssignedIn(method.Body.Statements);
+            else if (method.Body is not null)
+            {
+                Visit(method.Body.Statements);
+            }
         }
 
-        private bool IsAssignedIn(SyntaxList<StatementSyntax> statements)
+        private void Visit(SyntaxList<StatementSyntax> statements)
         {
             // Conditional statements and loops do not guarantee the assignment, so only unconditional forms are followed.
-            return statements.Any(statement => statement switch
+            foreach (var statement in statements)
             {
-                ExpressionStatementSyntax expression => IsAssignedIn(expression.Expression),
-                BlockSyntax block => IsAssignedIn(block.Statements),
-                TryStatementSyntax @try => IsAssignedIn(@try.Block.Statements) ||
-                                           (@try.Finally is not null && IsAssignedIn(@try.Finally.Block.Statements)),
-                _ => false,
-            });
+                _context.CancellationToken.ThrowIfCancellationRequested();
+                switch (statement)
+                {
+                    case ExpressionStatementSyntax expression:
+                        Visit(expression.Expression);
+                        break;
+                    case BlockSyntax block:
+                        Visit(block.Statements);
+                        break;
+                    case TryStatementSyntax @try:
+                        Visit(@try.Block.Statements);
+                        if (@try.Finally is not null)
+                        {
+                            Visit(@try.Finally.Block.Statements);
+                        }
+
+                        break;
+                }
+            }
         }
 
-        private bool IsAssignedIn(ExpressionSyntax expression)
+        private void Visit(ExpressionSyntax expression)
         {
             switch (expression)
             {
                 case AssignmentExpressionSyntax { Left: TupleExpressionSyntax tuple }:
-                    return tuple.Arguments.Any(argument => IsMember(argument.Expression));
+                    foreach (var argument in tuple.Arguments)
+                    {
+                        AddMember(argument.Expression);
+                    }
+
+                    break;
                 case AssignmentExpressionSyntax assignment:
-                    return IsMember(assignment.Left);
+                    AddMember(assignment.Left);
+                    break;
                 case InvocationExpressionSyntax invocation:
                     // Only methods of the same type are followed; the containing-type check comes first because it is cheaper than realizing the syntax.
-                    return _model.GetSymbolInfo(invocation).Symbol is IMethodSymbol callee &&
-                           SymbolEqualityComparer.Default.Equals(callee.ContainingType, _member.ContainingType) &&
-                           callee.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is MethodDeclarationSyntax
-                               declaration &&
-                           IsAssignedIn(declaration);
-                default:
-                    return false;
+                    if (Model(invocation).GetSymbolInfo(invocation, _context.CancellationToken).Symbol is IMethodSymbol callee &&
+                        SymbolEqualityComparer.Default.Equals(callee.ContainingType, _type) &&
+                        callee.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(_context.CancellationToken) is
+                            MethodDeclarationSyntax declaration)
+                    {
+                        Visit(declaration);
+                    }
+
+                    break;
             }
         }
 
-        private bool IsMember(ExpressionSyntax expression)
+        private void AddMember(ExpressionSyntax expression)
         {
-            // Comparing symbols rather than identifier text keeps a local or parameter with the member's name from counting.
-            return SymbolEqualityComparer.Default.Equals(_model.GetSymbolInfo(expression).Symbol, _member);
+            // Comparing symbols rather than identifier text keeps a local or parameter with the member's name from counting;
+            // the set holds whatever the left side binds to, and a local never matches a CS8618 member at lookup.
+            if (Model(expression).GetSymbolInfo(expression, _context.CancellationToken).Symbol is { } symbol)
+            {
+                Assigned.Add(symbol);
+            }
         }
+
+        // A followed callee may be declared in another part of a partial class, whose nodes belong to another tree;
+        // asking the semantic model of the first tree about them throws.
+        private SemanticModel Model(SyntaxNode node) => _context.GetSemanticModel(node.SyntaxTree);
     }
 }
