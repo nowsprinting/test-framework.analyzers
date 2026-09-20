@@ -1,8 +1,7 @@
 using System.Collections.Immutable;
-using System.Linq;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -24,7 +23,8 @@ public sealed class GenericTaskTestMethodAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description:
         "Detects a test method whose return type is System.Threading.Tasks.Task<TResult>. Unity Test Framework runs only the non-generic Task as an async test; a Task<TResult> method with ExpectedResult is executed synchronously and freezes the Editor.",
-        helpLinkUri: "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF1002.md");
+        helpLinkUri:
+        "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF1002.md");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
@@ -37,16 +37,10 @@ public sealed class GenericTaskTestMethodAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        var testAttributes = new[]
-            {
-                context.Compilation.GetTypeByMetadataName("NUnit.Framework.TestAttribute"),
-                context.Compilation.GetTypeByMetadataName("NUnit.Framework.TestCaseAttribute"),
-                context.Compilation.GetTypeByMetadataName("NUnit.Framework.TestCaseSourceAttribute"),
-            }
-            .Where(t => t is not null)
-            .ToImmutableArray();
+        var testAttributes =
+            MethodAttributeAnalysis.TryCreate(context.Compilation, MethodAttributeAnalysis.TestAttributes);
         var genericTask = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
-        if (testAttributes.IsEmpty || genericTask is null)
+        if (testAttributes is null || genericTask is null)
         {
             return;
         }
@@ -60,18 +54,12 @@ public sealed class GenericTaskTestMethodAnalyzer : DiagnosticAnalyzer
                 return;
             }
 
-            if (!method.GetAttributes().Any(a =>
-                    testAttributes.Contains(a.AttributeClass?.OriginalDefinition, SymbolEqualityComparer.Default)))
+            if (!testAttributes.HasAttribute(method))
             {
                 return;
             }
 
-            // The defect is the return type, not any single attribute, so one diagnostic is reported at the return type
-            // even when the method carries several test attributes.
-            var location =
-                (method.DeclaringSyntaxReferences[0].GetSyntax(symbolContext.CancellationToken) as
-                    MethodDeclarationSyntax)
-                ?.ReturnType.GetLocation() ?? method.Locations[0];
+            var location = MethodAttributeAnalysis.ReturnTypeLocation(method, symbolContext.CancellationToken);
             symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location,
                 method.ReturnType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
         }, SymbolKind.Method);

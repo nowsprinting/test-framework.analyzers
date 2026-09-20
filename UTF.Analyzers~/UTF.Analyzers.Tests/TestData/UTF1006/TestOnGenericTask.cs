@@ -1,12 +1,12 @@
 using System.Threading.Tasks;
 using NUnit.Framework;
 
-namespace UTF.Analyzers.Tests.TestData.UTF1002
+namespace UTF.Analyzers.Tests.TestData.UTF1006
 {
-    public class TestOnGenericValueTask
+    public class TestOnGenericTask
     {
         [Test]
-        public async ValueTask<int> ReturnsValue()
+        public async Task<int> ReturnsValue()
         {
             await Task.Yield();
             return 1;

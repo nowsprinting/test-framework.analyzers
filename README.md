@@ -39,6 +39,8 @@ Rules about test method signatures and attribute combinations.
 | [UTF1003](Documentation~/rules/UTF1003.md) | Pairwise, Sequential, and Combinatorial attributes are not supported on coroutine-style test methods | ❌ |
 | [UTF1004](Documentation~/rules/UTF1004.md) | OneTimeSetUp and OneTimeTearDown attributes are not supported on async methods | ❌ |
 | [UTF1005](Documentation~/rules/UTF1005.md) | Attributes implementing ICommandWrapper are not supported on async and coroutine-style test methods | ❌ |
+| [UTF1006](Documentation~/rules/UTF1006.md) | Only Task is supported as an async test method return type | ❌ |
+| [UTF1007](Documentation~/rules/UTF1007.md) | Only Task is supported as an async SetUp and TearDown method return type | ❌ |
 
 ### Assertion (UTF2xxx)
 
