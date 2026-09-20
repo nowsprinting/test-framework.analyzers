@@ -41,16 +41,15 @@ internal sealed class WaitAnalysis
     }
 
     /// <summary>
-    /// The waits in <paramref name="method"/>, with their reported location and name. A UniTask predicate wait that
-    /// is the receiver of Timeout(...) or TimeoutWithoutException(...) is returned with HasTimeoutChain set; whether
-    /// that counts as bounded is the caller's policy.
+    /// The unbounded waits in <paramref name="method"/>, with their reported location and name. A UniTask predicate
+    /// wait that is the receiver of Timeout(...) or TimeoutWithoutException(...) is bounded and not returned.
     /// </summary>
-    public IEnumerable<(Location Location, string Name, bool HasTimeoutChain)> Waits(IMethodSymbol method,
+    public IEnumerable<(Location Location, string Name)> Waits(IMethodSymbol method,
         CancellationToken cancellationToken)
     {
         if (OperationAnalysis.MethodBody(_compilation, method, cancellationToken) is not { } body)
         {
-            return Array.Empty<(Location, string, bool)>();
+            return Array.Empty<(Location, string)>();
         }
 
         var walker = new Walker(this, cancellationToken);
@@ -107,7 +106,7 @@ internal sealed class WaitAnalysis
         private readonly CancellationToken _cancellationToken;
         private readonly HashSet<IMethodSymbol> _inProgress = new(SymbolEqualityComparer.Default);
 
-        public List<(Location Location, string Name, bool HasTimeoutChain)> Found { get; } = new();
+        public List<(Location Location, string Name)> Found { get; } = new();
 
         public Walker(WaitAnalysis analysis, CancellationToken cancellationToken)
         {
@@ -127,16 +126,20 @@ internal sealed class WaitAnalysis
                     VisitNested(body, depth);
                     return;
                 case IWhileLoopOperation loop when YieldsOrAwaits(loop.Body):
-                    Found.Add((LoopKeyword(loop), loop.ConditionIsTop ? "while" : "do", false));
+                    Found.Add((LoopKeyword(loop), loop.ConditionIsTop ? "while" : "do"));
                     return;
+                // A CancellationToken argument does not bound the wait: the test runner never cancels it.
                 case IInvocationOperation invocation when _analysis.IsPredicateWait(invocation.TargetMethod):
-                    Found.Add((operation.Syntax.GetLocation(),
-                        $"{invocation.TargetMethod.ContainingType.Name}.{invocation.TargetMethod.Name}",
-                        _analysis.IsTimeoutReceiver(invocation)));
+                    if (!_analysis.IsTimeoutReceiver(invocation))
+                    {
+                        Found.Add((operation.Syntax.GetLocation(),
+                            $"{invocation.TargetMethod.ContainingType.Name}.{invocation.TargetMethod.Name}"));
+                    }
+
                     return;
                 case IObjectCreationOperation { Constructor: { } constructor }
                     when _analysis.IsPredicateYieldInstruction(constructor):
-                    Found.Add((operation.Syntax.GetLocation(), constructor.ContainingType.Name, false));
+                    Found.Add((operation.Syntax.GetLocation(), constructor.ContainingType.Name));
                     return;
                 case IAwaitOperation { Operation: IInvocationOperation awaited }:
                     VisitCallee(awaited, depth);
@@ -175,8 +178,7 @@ internal sealed class WaitAnalysis
                 return;
             }
 
-            // A wait inside the callee is reported once, at the call site, whatever it is and wherever it is. The call
-            // site is bounded only when every wait inside is.
+            // A wait inside the callee is reported once, at the call site, whatever it is and wherever it is.
             var before = Found.Count;
             if (OperationAnalysis.MethodBody(_analysis._compilation, callee, _cancellationToken) is { } body)
             {
@@ -186,14 +188,8 @@ internal sealed class WaitAnalysis
             _inProgress.Remove(callee);
             if (Found.Count > before)
             {
-                var allChained = true;
-                for (var i = before; i < Found.Count; i++)
-                {
-                    allChained &= Found[i].HasTimeoutChain;
-                }
-
                 Found.RemoveRange(before, Found.Count - before);
-                Found.Add((invocation.Syntax.GetLocation(), callee.Name, allChained));
+                Found.Add((invocation.Syntax.GetLocation(), callee.Name));
             }
         }
 

@@ -75,12 +75,9 @@ public sealed class UnboundedWaitInSetUpTearDownAnalyzer : DiagnosticAnalyzer
                 return;
             }
 
-            foreach (var (location, name, hasTimeoutChain) in analysis.Waits(method, symbolContext.CancellationToken))
+            foreach (var (location, name) in analysis.Waits(method, symbolContext.CancellationToken))
             {
-                if (!hasTimeoutChain)
-                {
-                    symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location, name, hook.Name));
-                }
+                symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location, name, hook.Name));
             }
         }, SymbolKind.Method);
     }
