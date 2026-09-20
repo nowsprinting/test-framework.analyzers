@@ -50,7 +50,7 @@ public sealed class UnboundedWaitWithoutTimeoutAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var analysis = new WaitAnalysis(compilation, timeoutChainIsBounded: false);
+        var analysis = new WaitAnalysis(compilation);
         context.RegisterSymbolAction(symbolContext =>
         {
             var method = (IMethodSymbol)symbolContext.Symbol;
@@ -61,7 +61,8 @@ public sealed class UnboundedWaitWithoutTimeoutAnalyzer : DiagnosticAnalyzer
                 return;
             }
 
-            foreach (var (location, name) in analysis.UnboundedWaits(method, symbolContext.CancellationToken))
+            // A UniTask wait chained with Timeout(...) is reported all the same: the attribute is the fix for a test.
+            foreach (var (location, name, _) in analysis.Waits(method, symbolContext.CancellationToken))
             {
                 symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location, name));
             }

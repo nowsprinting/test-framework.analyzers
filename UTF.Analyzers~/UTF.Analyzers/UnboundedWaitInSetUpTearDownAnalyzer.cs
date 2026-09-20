@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -41,73 +40,48 @@ public sealed class UnboundedWaitInSetUpTearDownAnalyzer : DiagnosticAnalyzer
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
         var compilation = context.Compilation;
-        var enumerator = compilation.GetTypeByMetadataName("System.Collections.IEnumerator");
         var task = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
-        if (enumerator is null || task is null)
+        if (task is null)
         {
             return;
         }
 
         // Each hook attribute is paired with the only return type Unity Test Framework runs as a coroutine for it:
         // a Task-returning UnitySetUp is never collected, and an async void SetUp returns at its first await.
-        var hooks = new List<(INamedTypeSymbol Attribute, INamedTypeSymbol ReturnType)>();
-        foreach (var (name, returnType) in new[]
-                 {
-                     ("UnityEngine.TestTools.UnitySetUpAttribute", enumerator),
-                     ("UnityEngine.TestTools.UnityTearDownAttribute", enumerator),
-                     ("UnityEngine.TestTools.UnityOneTimeSetUpAttribute", enumerator),
-                     ("UnityEngine.TestTools.UnityOneTimeTearDownAttribute", enumerator),
-                     ("NUnit.Framework.SetUpAttribute", task),
-                     ("NUnit.Framework.TearDownAttribute", task),
-                 })
+        var enumerator = compilation.GetSpecialType(SpecialType.System_Collections_IEnumerator);
+        var unityHooks = new[]
         {
-            if (compilation.GetTypeByMetadataName(name) is { } attribute)
-            {
-                hooks.Add((attribute, returnType));
-            }
-        }
-
-        if (hooks.Count == 0)
+            compilation.GetTypeByMetadataName("UnityEngine.TestTools.UnitySetUpAttribute"),
+            compilation.GetTypeByMetadataName("UnityEngine.TestTools.UnityTearDownAttribute"),
+            compilation.GetTypeByMetadataName("UnityEngine.TestTools.UnityOneTimeSetUpAttribute"),
+            compilation.GetTypeByMetadataName("UnityEngine.TestTools.UnityOneTimeTearDownAttribute")
+        };
+        var nunitHooks = new[]
         {
-            return;
-        }
+            compilation.GetTypeByMetadataName("NUnit.Framework.SetUpAttribute"),
+            compilation.GetTypeByMetadataName("NUnit.Framework.TearDownAttribute")
+        };
 
-        var analysis = new WaitAnalysis(compilation, timeoutChainIsBounded: true);
+        var analysis = new WaitAnalysis(compilation);
         context.RegisterSymbolAction(symbolContext =>
         {
             var method = (IMethodSymbol)symbolContext.Symbol;
-            if (HookAttribute(method, hooks) is not { } hook)
+            var returnType = method.ReturnType.OriginalDefinition;
+            var hooks = SymbolEqualityComparer.Default.Equals(returnType, enumerator) ? unityHooks
+                : SymbolEqualityComparer.Default.Equals(returnType, task) ? nunitHooks
+                : null;
+            if (hooks is null || UnityHookMethodAnalysis.FindAttribute(method, hooks) is not { } hook)
             {
                 return;
             }
 
-            foreach (var (location, name) in analysis.UnboundedWaits(method, symbolContext.CancellationToken))
+            foreach (var (location, name, hasTimeoutChain) in analysis.Waits(method, symbolContext.CancellationToken))
             {
-                symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location, name, hook.Name));
-            }
-        }, SymbolKind.Method);
-    }
-
-    // The attribute may sit on a base declaration the method overrides; the framework collects hooks with inherit: true.
-    private static INamedTypeSymbol? HookAttribute(IMethodSymbol method,
-        List<(INamedTypeSymbol Attribute, INamedTypeSymbol ReturnType)> hooks)
-    {
-        var returnType = method.ReturnType.OriginalDefinition;
-        for (var m = method; m is not null; m = m.OverriddenMethod)
-        {
-            foreach (var attribute in m.GetAttributes())
-            {
-                foreach (var (hook, hookReturnType) in hooks)
+                if (!hasTimeoutChain)
                 {
-                    if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass?.OriginalDefinition, hook)
-                        && SymbolEqualityComparer.Default.Equals(returnType, hookReturnType))
-                    {
-                        return hook;
-                    }
+                    symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location, name, hook.Name));
                 }
             }
-        }
-
-        return null;
+        }, SymbolKind.Method);
     }
 }
