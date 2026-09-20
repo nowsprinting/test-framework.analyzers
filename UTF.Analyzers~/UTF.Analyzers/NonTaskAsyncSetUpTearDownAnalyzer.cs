@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -31,5 +32,40 @@ public sealed class NonTaskAsyncSetUpTearDownAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
+        context.RegisterCompilationStartAction(OnCompilationStart);
+    }
+
+    private static void OnCompilationStart(CompilationStartAnalysisContext context)
+    {
+        var hookAttributes = MethodAttributeAnalysis.TryCreate(context.Compilation,
+            MethodAttributeAnalysis.SetUpTearDownAttributes);
+        var task = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
+        if (hookAttributes is null || task is null)
+        {
+            return;
+        }
+
+        context.RegisterSymbolAction(symbolContext =>
+        {
+            symbolContext.CancellationToken.ThrowIfCancellationRequested();
+            var method = (IMethodSymbol)symbolContext.Symbol;
+            if (!hookAttributes.HasAttribute(method))
+            {
+                return;
+            }
+
+            // Unlike UTF1006, async void is reported here: NUnit.Analyzers has no rule for setup and teardown methods,
+            // and Task<TResult> is reported too because UTF1002 covers test methods only.
+            var returnType = method.ReturnType;
+            if (SymbolEqualityComparer.Default.Equals(returnType, task)
+                || (!method.IsAsync && !AwaitableAnalysis.IsAwaitable(returnType)))
+            {
+                return;
+            }
+
+            var location = MethodAttributeAnalysis.ReturnTypeLocation(method, symbolContext.CancellationToken);
+            symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location,
+                returnType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+        }, SymbolKind.Method);
     }
 }
