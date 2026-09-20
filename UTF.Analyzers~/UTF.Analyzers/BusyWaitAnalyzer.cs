@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -17,11 +16,6 @@ namespace UTF.Analyzers;
 public sealed class BusyWaitAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "UTF4003";
-
-    /// <summary>
-    /// Deepest body that is walked; the analyzed method body is depth 0, as in <see cref="WaitAnalysis"/>.
-    /// </summary>
-    private const int MaxDepth = 2;
 
     // The BCL calls that only pass time. The list is closed: it does not grow with libraries or projects.
     private static readonly string[] ThreadPassTimeNames = { "Sleep", "Yield", "SpinWait" };
@@ -105,88 +99,33 @@ public sealed class BusyWaitAnalyzer : DiagnosticAnalyzer
         }, SymbolKind.Method);
     }
 
-    private sealed class Walker
+    private sealed class Walker : DepthBoundedWalker
     {
-        private readonly Compilation _compilation;
         private readonly INamedTypeSymbol _thread;
         private readonly INamedTypeSymbol _spinWait;
-        private readonly CancellationToken _cancellationToken;
-        private readonly HashSet<IMethodSymbol> _inProgress = new(SymbolEqualityComparer.Default);
-
-        public List<(Location Location, string Name)> Found { get; } = new();
 
         public Walker(Compilation compilation, INamedTypeSymbol thread, INamedTypeSymbol spinWait,
             CancellationToken cancellationToken)
+            : base(compilation, cancellationToken)
         {
-            _compilation = compilation;
             _thread = thread;
             _spinWait = spinWait;
-            _cancellationToken = cancellationToken;
         }
 
-        // The walk follows the same edges as WaitAnalysis.Walker (lambdas, local functions, and await / yield return
-        // operands, two levels deep) but reports inside the callee instead of collapsing to the call site, because
-        // the fix is applied at the wait itself. The two walkers are kept separate rather than parameterized: the
-        // callee handling is the only shared part, and a shared base would need a hook for each report policy.
-        public void Visit(IOperation operation, int depth)
+        // A wait found in a callee stays reported at the wait, unlike WaitAnalysis, because the fix is applied there.
+        protected override bool TryMatch(IOperation operation)
         {
-            _cancellationToken.ThrowIfCancellationRequested();
             switch (operation)
             {
-                case IAnonymousFunctionOperation lambda:
-                    VisitNested(lambda.Body, depth);
-                    return;
-                case ILocalFunctionOperation { Body: { } body }:
-                    VisitNested(body, depth);
-                    return;
                 case IWhileLoopOperation loop when DoesNoWork(loop.Body):
                     Found.Add((OperationAnalysis.LoopKeyword(loop), loop.ConditionIsTop ? "while" : "do"));
-                    return;
+                    return true;
                 case IInvocationOperation invocation when IsSpinUntil(invocation.TargetMethod):
                     Found.Add((operation.Syntax.GetLocation(), "SpinWait.SpinUntil"));
-                    return;
-                case IAwaitOperation { Operation: IInvocationOperation awaited }:
-                    VisitCallee(awaited, depth);
-                    break;
-                // The yielded IEnumerator is wrapped in an implicit conversion to object.
-                case IReturnOperation { Kind: OperationKind.YieldReturn, ReturnedValue: { } returned }
-                    when OperationAnalysis.WithoutImplicitConversions(returned) is IInvocationOperation yielded:
-                    VisitCallee(yielded, depth);
-                    break;
+                    return true;
+                default:
+                    return false;
             }
-
-            foreach (var child in operation.ChildOperations)
-            {
-                Visit(child, depth);
-            }
-        }
-
-        private void VisitNested(IOperation body, int depth)
-        {
-            if (depth < MaxDepth)
-            {
-                Visit(body, depth + 1);
-            }
-        }
-
-        // A local function is walked where it is declared, so following its invocation would report it twice.
-        private void VisitCallee(IInvocationOperation invocation, int depth)
-        {
-            var callee = invocation.TargetMethod.OriginalDefinition;
-            if (depth >= MaxDepth
-                || callee.MethodKind == MethodKind.LocalFunction
-                || callee.DeclaringSyntaxReferences.IsEmpty
-                || !_inProgress.Add(callee))
-            {
-                return;
-            }
-
-            if (OperationAnalysis.MethodBody(_compilation, callee, _cancellationToken) is { } body)
-            {
-                Visit(body, depth + 1);
-            }
-
-            _inProgress.Remove(callee);
         }
 
         // A single-statement body ("while (!x) Thread.Sleep(10);") is the statement itself, not a block.
@@ -218,13 +157,14 @@ public sealed class BusyWaitAnalyzer : DiagnosticAnalyzer
             var type = method.ContainingType;
             return (SymbolEqualityComparer.Default.Equals(type, _thread)
                     && Array.IndexOf(ThreadPassTimeNames, method.Name) >= 0)
-                   || (SymbolEqualityComparer.Default.Equals(type, _spinWait) && method.Name == "SpinOnce");
+                   || (SymbolEqualityComparer.Default.Equals(type, _spinWait)
+                       && string.Equals(method.Name, "SpinOnce", StringComparison.Ordinal));
         }
 
         private bool IsSpinUntil(IMethodSymbol method)
         {
             return SymbolEqualityComparer.Default.Equals(method.ContainingType, _spinWait)
-                   && method.Name == "SpinUntil";
+                   && string.Equals(method.Name, "SpinUntil", StringComparison.Ordinal);
         }
     }
 }
