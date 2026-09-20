@@ -37,7 +37,8 @@ public sealed class GenericTaskTestMethodAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        var testAttributes = MethodAttributeAnalysis.TryCreate(context.Compilation, MethodAttributeAnalysis.TestAttributes);
+        var testAttributes =
+            MethodAttributeAnalysis.TryCreate(context.Compilation, MethodAttributeAnalysis.TestAttributes);
         var genericTask = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
         if (testAttributes is null || genericTask is null)
         {

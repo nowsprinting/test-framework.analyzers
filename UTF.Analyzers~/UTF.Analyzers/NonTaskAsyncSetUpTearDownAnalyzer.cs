@@ -55,10 +55,12 @@ public sealed class NonTaskAsyncSetUpTearDownAnalyzer : DiagnosticAnalyzer
             }
 
             // Unlike UTF1006, async void is reported here: NUnit.Analyzers has no rule for setup and teardown methods,
-            // and Task<TResult> is reported too because UTF1002 covers test methods only.
+            // and Task<TResult> is reported too because UTF1002 covers test methods only. A non-async void method is
+            // the common case and is excluded before the member lookup in IsAwaitable.
             var returnType = method.ReturnType;
             if (SymbolEqualityComparer.Default.Equals(returnType, task)
-                || (!method.IsAsync && !AwaitableAnalysis.IsAwaitable(returnType)))
+                || (!method.IsAsync
+                    && (returnType.SpecialType == SpecialType.System_Void || !AwaitableAnalysis.IsAwaitable(returnType))))
             {
                 return;
             }

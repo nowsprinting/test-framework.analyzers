@@ -14,7 +14,8 @@ namespace UTF.Analyzers.Utilities;
 internal sealed class MethodAttributeAnalysis
 {
     public static readonly ImmutableArray<string> TestAttributes = ImmutableArray.Create(
-        "NUnit.Framework.TestAttribute", "NUnit.Framework.TestCaseAttribute", "NUnit.Framework.TestCaseSourceAttribute");
+        "NUnit.Framework.TestAttribute", "NUnit.Framework.TestCaseAttribute",
+        "NUnit.Framework.TestCaseSourceAttribute");
 
     public static readonly ImmutableArray<string> SetUpTearDownAttributes = ImmutableArray.Create(
         "NUnit.Framework.SetUpAttribute", "NUnit.Framework.TearDownAttribute");
@@ -38,7 +39,8 @@ internal sealed class MethodAttributeAnalysis
 
     /// <summary>
     /// Plain loops rather than LINQ because this runs on every method symbol: Contains with a comparer boxes the
-    /// ImmutableArray and Any allocates a closure per call.
+    /// ImmutableArray and Any allocates a closure per call. UnityHookMethodAnalysis.FindAttribute is not reused because
+    /// it walks OverriddenMethod; the return-type rules report only on the declaration that spells the return type.
     /// </summary>
     public bool HasAttribute(IMethodSymbol method)
     {
