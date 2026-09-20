@@ -14,7 +14,6 @@ The parent directory is the UPM package root.
 
 - `UTF.Analyzers/` # Analyzer project (netstandard2.0)
 - `UTF.Analyzers.Tests/` # xUnit tests using Microsoft.CodeAnalysis.Testing (net10.0)
-- `UTF.Analyzers.Sample/` # Sample project that references the analyzer for manual verification (net10.0)
 - `../Analyzers/UTF.Analyzers/` # UPM-facing directory. Contains the built `UTF.Analyzers.dll` and an `.asmref` to `UnityEngine.TestRunner`
 - `../Documentation~/` # Package documentation published to https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/
 
