@@ -37,7 +37,7 @@ public sealed class NonTaskAsyncTestMethodAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        var testAttributes = TestAttributeAnalysis.TryCreate(context.Compilation);
+        var testAttributes = MethodAttributeAnalysis.TryCreate(context.Compilation, MethodAttributeAnalysis.TestAttributes);
         var task = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
         var genericTask = context.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
         if (testAttributes is null || task is null || genericTask is null)
@@ -51,7 +51,7 @@ public sealed class NonTaskAsyncTestMethodAnalyzer : DiagnosticAnalyzer
             var method = (IMethodSymbol)symbolContext.Symbol;
             // The attribute check comes first because it discards nearly every method symbol with a cached array read,
             // before the return type is inspected.
-            if (!testAttributes.IsTestMethod(method))
+            if (!testAttributes.HasAttribute(method))
             {
                 return;
             }
@@ -71,7 +71,7 @@ public sealed class NonTaskAsyncTestMethodAnalyzer : DiagnosticAnalyzer
                 return;
             }
 
-            var location = TestAttributeAnalysis.ReturnTypeLocation(method, symbolContext.CancellationToken);
+            var location = MethodAttributeAnalysis.ReturnTypeLocation(method, symbolContext.CancellationToken);
             symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location,
                 returnType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
         }, SymbolKind.Method);
