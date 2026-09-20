@@ -77,6 +77,6 @@ public sealed class OuterUnityTestActionAttributeUsageAnalyzer : DiagnosticAnaly
         INamedTypeSymbol attributeUsage)
     {
         return ActionAttributeAnalysis.IsActionAttributeClass(symbol, outerAction, attribute)
-               && (ActionAttributeAnalysis.EffectiveValidOn(symbol, attributeUsage) & ~AttributeTargets.Method) != 0;
+               && (ActionAttributeAnalysis.EffectiveValidOn(symbol, attributeUsage) & ~AttributeTargets.Method) != (AttributeTargets)0;
     }
 }
