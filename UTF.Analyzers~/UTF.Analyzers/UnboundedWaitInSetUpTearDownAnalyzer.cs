@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -33,5 +35,79 @@ public sealed class UnboundedWaitInSetUpTearDownAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
+        context.RegisterCompilationStartAction(OnCompilationStart);
+    }
+
+    private static void OnCompilationStart(CompilationStartAnalysisContext context)
+    {
+        var compilation = context.Compilation;
+        var enumerator = compilation.GetTypeByMetadataName("System.Collections.IEnumerator");
+        var task = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
+        if (enumerator is null || task is null)
+        {
+            return;
+        }
+
+        // Each hook attribute is paired with the only return type Unity Test Framework runs as a coroutine for it:
+        // a Task-returning UnitySetUp is never collected, and an async void SetUp returns at its first await.
+        var hooks = new List<(INamedTypeSymbol Attribute, INamedTypeSymbol ReturnType)>();
+        foreach (var (name, returnType) in new[]
+                 {
+                     ("UnityEngine.TestTools.UnitySetUpAttribute", enumerator),
+                     ("UnityEngine.TestTools.UnityTearDownAttribute", enumerator),
+                     ("UnityEngine.TestTools.UnityOneTimeSetUpAttribute", enumerator),
+                     ("UnityEngine.TestTools.UnityOneTimeTearDownAttribute", enumerator),
+                     ("NUnit.Framework.SetUpAttribute", task),
+                     ("NUnit.Framework.TearDownAttribute", task),
+                 })
+        {
+            if (compilation.GetTypeByMetadataName(name) is { } attribute)
+            {
+                hooks.Add((attribute, returnType));
+            }
+        }
+
+        if (hooks.Count == 0)
+        {
+            return;
+        }
+
+        var analysis = new WaitAnalysis(compilation, timeoutChainIsBounded: true);
+        context.RegisterSymbolAction(symbolContext =>
+        {
+            var method = (IMethodSymbol)symbolContext.Symbol;
+            if (HookAttribute(method, hooks) is not { } hook)
+            {
+                return;
+            }
+
+            foreach (var (location, name) in analysis.UnboundedWaits(method, symbolContext.CancellationToken))
+            {
+                symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location, name, hook.Name));
+            }
+        }, SymbolKind.Method);
+    }
+
+    // The attribute may sit on a base declaration the method overrides; the framework collects hooks with inherit: true.
+    private static INamedTypeSymbol? HookAttribute(IMethodSymbol method,
+        List<(INamedTypeSymbol Attribute, INamedTypeSymbol ReturnType)> hooks)
+    {
+        var returnType = method.ReturnType.OriginalDefinition;
+        for (var m = method; m is not null; m = m.OverriddenMethod)
+        {
+            foreach (var attribute in m.GetAttributes())
+            {
+                foreach (var (hook, hookReturnType) in hooks)
+                {
+                    if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass?.OriginalDefinition, hook)
+                        && SymbolEqualityComparer.Default.Equals(returnType, hookReturnType))
+                    {
+                        return hook;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 }
