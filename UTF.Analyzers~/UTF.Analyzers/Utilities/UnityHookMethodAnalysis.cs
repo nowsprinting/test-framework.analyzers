@@ -10,6 +10,15 @@ internal static class UnityHookMethodAnalysis
     /// </summary>
     public static bool HasAnyAttribute(IMethodSymbol? method, params INamedTypeSymbol?[] attributes)
     {
+        return FindAttribute(method, attributes) is not null;
+    }
+
+    /// <summary>
+    /// The first of <paramref name="attributes"/> that marks <paramref name="method"/>, on itself or on a base
+    /// declaration it overrides, or null when none does.
+    /// </summary>
+    public static INamedTypeSymbol? FindAttribute(IMethodSymbol? method, params INamedTypeSymbol?[] attributes)
+    {
         for (; method is not null; method = method.OverriddenMethod)
         {
             foreach (var attribute in method.GetAttributes())
@@ -19,12 +28,12 @@ internal static class UnityHookMethodAnalysis
                 {
                     if (candidate is not null && SymbolEqualityComparer.Default.Equals(attributeClass, candidate))
                     {
-                        return true;
+                        return candidate;
                     }
                 }
             }
         }
 
-        return false;
+        return null;
     }
 }

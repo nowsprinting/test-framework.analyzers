@@ -72,6 +72,7 @@ Rules about code that works but is not recommended.
 | Id | Title | Severity |
 |----|-------|----------|
 | [UTF4001](Documentation~/rules/UTF4001.md) | Test methods that wait for a condition must have a Timeout attribute | ❌ |
+| [UTF4002](Documentation~/rules/UTF4002.md) | Waits for a condition in UnitySetUp, UnityTearDown, UnityOneTimeSetUp, UnityOneTimeTearDown, SetUp, and TearDown methods must have a time limit | ❌ |
 
 ### Extensions (UTF5xxx)
 
