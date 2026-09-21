@@ -76,6 +76,7 @@ Rules about code that works but is not recommended.
 | [UTF4001](Documentation~/rules/UTF4001.md) | Test methods that wait for a condition must have a Timeout attribute | ❌ |
 | [UTF4002](Documentation~/rules/UTF4002.md) | Waits for a condition in UnitySetUp, UnityTearDown, UnityOneTimeSetUp, UnityOneTimeTearDown, SetUp, and TearDown methods must have a time limit | ❌ |
 | [UTF4003](Documentation~/rules/UTF4003.md) | Waiting for a condition without yielding or awaiting does not advance frames | ❌ |
+| [UTF4004](Documentation~/rules/UTF4004.md) | Waiting for a fixed time in test, setup, and teardown methods is not recommended | ⚠️ |
 
 ### Extensions (UTF5xxx)
 
