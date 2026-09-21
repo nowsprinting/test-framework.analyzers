@@ -4,11 +4,17 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace UnityEngine
 {
     public class Awaitable
     {
+        public static Awaitable WaitForSecondsAsync(float seconds, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException();
+        }
+
         public Awaiter GetAwaiter()
         {
             throw new NotImplementedException();
