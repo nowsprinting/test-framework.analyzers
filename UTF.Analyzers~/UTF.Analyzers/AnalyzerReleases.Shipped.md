@@ -49,3 +49,15 @@ Rule ID | Category | Severity | Notes
 UTF5002 | Extensions | Warning | Implementing IWrapTestMethod and IWrapSetUpTearDown is not recommended
 UTF5003 | Extensions | Warning | Attributes implementing IOuterUnityTestAction must restrict their targets with AttributeUsage
 UTF5004 | Extensions | Warning | Attributes implementing ITestAction must restrict their targets with AttributeUsage
+
+## Release 1.3.0
+
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|-------
+UTF4001 | Style | Error | UnboundedWaitWithoutTimeoutAnalyzer
+UTF4002 | Style | Error | UnboundedWaitInSetUpTearDownAnalyzer
+UTF4003 | Style | Error | BusyWaitAnalyzer
+UTF1006 | Structure | Error | NonTaskAsyncTestMethodAnalyzer
+UTF1007 | Structure | Error | NonTaskAsyncSetUpTearDownAnalyzer
