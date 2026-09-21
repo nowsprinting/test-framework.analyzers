@@ -20,18 +20,6 @@ public sealed class BusyWaitAnalyzer : DiagnosticAnalyzer
     // The BCL calls that only pass time. The list is closed: it does not grow with libraries or projects.
     private static readonly string[] ThreadPassTimeNames = { "Sleep", "Yield", "SpinWait" };
 
-    private static readonly string[] HookAttributeNames =
-    {
-        "NUnit.Framework.SetUpAttribute",
-        "NUnit.Framework.TearDownAttribute",
-        "NUnit.Framework.OneTimeSetUpAttribute",
-        "NUnit.Framework.OneTimeTearDownAttribute",
-        "UnityEngine.TestTools.UnitySetUpAttribute",
-        "UnityEngine.TestTools.UnityTearDownAttribute",
-        "UnityEngine.TestTools.UnityOneTimeSetUpAttribute",
-        "UnityEngine.TestTools.UnityOneTimeTearDownAttribute"
-    };
-
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
         title: "Waiting for a condition without yielding or awaiting does not advance frames",
@@ -65,12 +53,7 @@ public sealed class BusyWaitAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var hooks = new INamedTypeSymbol?[HookAttributeNames.Length];
-        for (var i = 0; i < hooks.Length; i++)
-        {
-            hooks[i] = compilation.GetTypeByMetadataName(HookAttributeNames[i]);
-        }
-
+        var hooks = UnityHookMethodAnalysis.ResolveAllHookAttributes(compilation);
         var analysis = new CompilationAnalysis(compilation, testMethods, hooks, thread, spinWait);
         context.RegisterSymbolAction(analysis.AnalyzeMethod, SymbolKind.Method);
     }

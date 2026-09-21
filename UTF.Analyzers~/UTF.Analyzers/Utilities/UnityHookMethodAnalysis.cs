@@ -5,6 +5,35 @@ namespace UTF.Analyzers.Utilities;
 internal static class UnityHookMethodAnalysis
 {
     /// <summary>
+    /// Metadata names of every NUnit and UTF setup and teardown attribute.
+    /// </summary>
+    public static readonly string[] AllHookAttributeNames =
+    {
+        "NUnit.Framework.SetUpAttribute",
+        "NUnit.Framework.TearDownAttribute",
+        "NUnit.Framework.OneTimeSetUpAttribute",
+        "NUnit.Framework.OneTimeTearDownAttribute",
+        "UnityEngine.TestTools.UnitySetUpAttribute",
+        "UnityEngine.TestTools.UnityTearDownAttribute",
+        "UnityEngine.TestTools.UnityOneTimeSetUpAttribute",
+        "UnityEngine.TestTools.UnityOneTimeTearDownAttribute"
+    };
+
+    /// <summary>
+    /// Resolves <see cref="AllHookAttributeNames"/> in <paramref name="compilation"/>; an absent attribute is null.
+    /// </summary>
+    public static INamedTypeSymbol?[] ResolveAllHookAttributes(Compilation compilation)
+    {
+        var hooks = new INamedTypeSymbol?[AllHookAttributeNames.Length];
+        for (var i = 0; i < hooks.Length; i++)
+        {
+            hooks[i] = compilation.GetTypeByMetadataName(AllHookAttributeNames[i]);
+        }
+
+        return hooks;
+    }
+
+    /// <summary>
     /// Returns whether <paramref name="method"/> is marked with any of <paramref name="attributes"/>, on itself or on a
     /// base declaration it overrides. A null entry stands for an attribute absent from the compilation and never matches.
     /// </summary>
