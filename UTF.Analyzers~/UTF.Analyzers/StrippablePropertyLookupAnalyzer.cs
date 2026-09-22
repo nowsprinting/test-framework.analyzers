@@ -22,12 +22,12 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         title:
         "Property constraints, Ordered.By, and List.Map(...).Property look up properties that managed code stripping can remove",
         messageFormat:
-        "'{0}' is looked up by name at run time and managed code stripping can remove it: the test fails in the Player. Read the property directly in the actual value instead.",
+        "'{0}' is looked up by name at runtime and managed code stripping can remove it: the test fails in the Player. Read the property directly in the actual value instead.",
         category: "Assertion",
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
         description:
-        "Detects a property constraint (Has.Property, With.Property, Has.Length, Has.Count, Has.Message, Has.InnerException), Is.Ordered.By, and List.Map(...).Property whose property is not referenced by NUnit itself. NUnit finds the property with reflection at run time, so the Unity linker sees no reference to it and can remove it from a Player build.",
+        "Detects every property named by a string (Has.Property, With.Property, Is.Ordered.By, and List.Map(...).Property), and the property shorthands Has.Length, Has.Count, Has.Message, and Has.InnerException whose property is not referenced by NUnit itself. NUnit finds the property with reflection at runtime, so the Unity linker sees no reference to it and can remove it from a Player build.",
         helpLinkUri:
         "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF2006.md");
 
@@ -132,14 +132,13 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         private readonly INamedTypeSymbol? _systemType;
         private readonly INamedTypeSymbol? _enumerableOfT;
         private readonly ImmutableHashSet<ISymbol> _that;
-        private readonly ImmutableDictionary<ISymbol, string?> _propertySteps;
+        private readonly ImmutableHashSet<ISymbol> _namedByString;
+        private readonly ImmutableHashSet<ISymbol> _propertyMethods;
+        private readonly ImmutableDictionary<ISymbol, string> _propertyShorthands;
         private readonly ImmutableHashSet<ISymbol> _collectionOperators;
         private readonly ImmutableHashSet<ISymbol> _typeConstraints;
         private readonly ImmutableDictionary<ISymbol, INamedTypeSymbol> _throwsExceptions;
         private readonly ImmutableHashSet<ISymbol> _conjunctions;
-        private readonly ImmutableHashSet<ISymbol> _by;
-        private readonly ImmutableHashSet<ISymbol> _listMap;
-        private readonly ImmutableHashSet<ISymbol> _listMapperProperty;
         private readonly Lazy<ImmutableHashSet<ISymbol>> _nunitReferenced;
 
         private Analysis(Compilation compilation, INamedTypeSymbol assert, INamedTypeSymbol has,
@@ -151,7 +150,6 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
             var resolvable =
                 compilation.GetTypeByMetadataName("NUnit.Framework.Constraints.ResolvableConstraintExpression");
             var ordered = compilation.GetTypeByMetadataName("NUnit.Framework.Constraints.CollectionOrderedConstraint");
-            var list = compilation.GetTypeByMetadataName("NUnit.Framework.List");
             var listMapper = compilation.GetTypeByMetadataName("NUnit.Framework.ListMapper");
             var expressionTypes = new[] { has, constraintExpression };
 
@@ -159,13 +157,14 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
             _systemType = compilation.GetTypeByMetadataName("System.Type");
             _enumerableOfT = compilation.GetSpecialType(SpecialType.System_Collections_Generic_IEnumerable_T);
             _that = Members(new[] { assert, assume }, "That");
-            // A null name means Property(string), whose name is the constant argument.
-            _propertySteps = new[] { "Property", "Length", "Count", "Message", "InnerException" }
-                .SelectMany(name => Members(expressionTypes, name)
-                    .Select(member => (member,
-                        name: string.Equals(name, "Property", System.StringComparison.Ordinal) ? null : name)))
+            _propertyMethods = Members(expressionTypes, "Property");
+            _propertyShorthands = new[] { "Length", "Count", "Message", "InnerException" }
+                .SelectMany(name => Members(expressionTypes, name).Select(member => (member, name)))
                 .ToImmutableDictionary(p => p.member, p => p.name, SymbolEqualityComparer.Default,
-                    System.StringComparer.Ordinal);
+                    StringComparer.Ordinal);
+            _namedByString = _propertyMethods
+                .Union(Members(new[] { ordered }, "By"))
+                .Union(Members(new[] { listMapper }, "Property"));
             _collectionOperators = Members(expressionTypes, "All", "Some", "None", "Exactly");
             _typeConstraints = Members(new[] { @is, throws, constraintExpression }, "TypeOf", "InstanceOf")
                 .Where(member => member is IMethodSymbol { IsGenericMethod: true })
@@ -178,9 +177,6 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
             // Constraint.With is Constraint.And, not the prefix ConstraintExpression.With, so it starts a new operand.
             _conjunctions = Members(new[] { constraint }, "And", "Or", "With")
                 .Union(Members(new[] { resolvable }, "And", "Or"));
-            _by = Members(new[] { ordered }, "By");
-            _listMap = Members(new[] { list }, "Map");
-            _listMapperProperty = Members(new[] { listMapper }, "Property");
             // Resolving about fifty types at every compilation start is wasted for the many compilations that contain
             // no property step, so the set is built on the first property found.
             _nunitReferenced = new Lazy<ImmutableHashSet<ISymbol>>(() => NUnitReferencedGetters
@@ -208,17 +204,16 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         {
             var invocation = (IInvocationOperation)context.Operation;
             var method = invocation.TargetMethod.OriginalDefinition;
-            if (_that.Contains(method))
+            if (_namedByString.Contains(method))
+            {
+                // Reported wherever it appears and whatever the type: the High stripping level can remove any
+                // property, and the target type is often unknown (object, a constraint in a variable, a subclass).
+                context.ReportDiagnostic(Diagnostic.Create(Rule,
+                    OperationAnalysis.MemberNameLocation(invocation.Syntax), NameArgument(invocation)));
+            }
+            else if (_that.Contains(method))
             {
                 AnalyzeThat(invocation, context);
-            }
-            else if (_listMapperProperty.Contains(method) &&
-                     invocation.Instance is IInvocationOperation map &&
-                     _listMap.Contains(map.TargetMethod.OriginalDefinition) &&
-                     map.Arguments.Length == 1)
-            {
-                var collection = OperationAnalysis.WithoutImplicitConversions(map.Arguments[0].Value).Type;
-                ReportIfStrippable(invocation, ElementType(collection), ConstantName(invocation), true, context);
             }
         }
 
@@ -261,9 +256,14 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
                     continue;
                 }
 
-                if (_propertySteps.TryGetValue(member, out var name))
+                if (_propertyMethods.Contains(member))
                 {
-                    target = ReportIfStrippable(step, target, name ?? ConstantName(step), true, context)?.Type;
+                    // Reported on its own by Analyze; followed here only so that a later shorthand sees its type.
+                    target = FindProperty(target, ConstantName(step))?.Type;
+                }
+                else if (_propertyShorthands.TryGetValue(member, out var name))
+                {
+                    target = ReportShorthandIfStrippable(step, target, name, context)?.Type;
                 }
                 else if (_collectionOperators.Contains(member))
                 {
@@ -281,21 +281,17 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
                 {
                     target = operand;
                 }
-                else if (_by.Contains(member))
-                {
-                    ReportIfStrippable(step, ElementType(target), ConstantName(step), false, context);
-                }
             }
         }
 
         /// <summary>
-        /// Returns the property NUnit would find on <paramref name="target"/>, reporting it when it can be stripped,
-        /// or null when the property cannot be resolved at compile time.
+        /// Returns the property a shorthand (Has.Length, .With.Message) reads on <paramref name="target"/>, reporting it
+        /// unless NUnit itself references its getter, or null when the property cannot be resolved at compile time.
         /// </summary>
-        private IPropertySymbol? ReportIfStrippable(IOperation step, ITypeSymbol? target, string? name,
-            bool includeNonPublic, OperationAnalysisContext context)
+        private IPropertySymbol? ReportShorthandIfStrippable(IOperation step, ITypeSymbol? target, string name,
+            OperationAnalysisContext context)
         {
-            var property = FindProperty(target, name, includeNonPublic);
+            var property = FindProperty(target, name);
             if (property is not null && !IsReferencedByNUnit(property))
             {
                 context.ReportDiagnostic(Diagnostic.Create(Rule, OperationAnalysis.MemberNameLocation(step.Syntax),
@@ -305,7 +301,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
             return property;
         }
 
-        private IPropertySymbol? FindProperty(ITypeSymbol? target, string? name, bool includeNonPublic)
+        private IPropertySymbol? FindProperty(ITypeSymbol? target, string? name)
         {
             if (target is null || name is null || target.SpecialType == SpecialType.System_Object ||
                 target.TypeKind is TypeKind.Error or TypeKind.Dynamic or TypeKind.TypeParameter ||
@@ -319,8 +315,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
                 : BaseTypesAndSelf(target);
             return candidates
                 .SelectMany(type => type.GetMembers(name).OfType<IPropertySymbol>())
-                .FirstOrDefault(p => !p.IsStatic && !p.IsIndexer &&
-                                     (includeNonPublic || p.DeclaredAccessibility == Accessibility.Public));
+                .FirstOrDefault(p => !p.IsStatic && !p.IsIndexer);
         }
 
         private static IEnumerable<ITypeSymbol> BaseTypesAndSelf(ITypeSymbol type)
@@ -367,6 +362,12 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
                     .FirstOrDefault(t => SymbolEqualityComparer.Default.Equals(t.OriginalDefinition, _enumerableOfT))
                     ?.TypeArguments[0];
         }
+
+        /// <summary>
+        /// The property name as written: the constant value, or the argument's source text when it is not a constant.
+        /// </summary>
+        private static string NameArgument(IInvocationOperation invocation) =>
+            ConstantName(invocation) ?? invocation.Arguments.FirstOrDefault()?.Value.Syntax.ToString() ?? string.Empty;
 
         private static string? ConstantName(IOperation step) =>
             step is IInvocationOperation { Arguments.Length: 1 } invocation &&
