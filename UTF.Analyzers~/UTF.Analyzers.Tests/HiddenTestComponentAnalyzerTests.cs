@@ -84,12 +84,18 @@ namespace UTF.Analyzers.Tests
 
         /// <summary>
         /// The harness adds the fixture as "/0/Test0.cs" in project "TestProject", so neither path nor assembly name can mark
-        /// a test assembly; this rule needs both under control, hence the explicit path and project name here.
+        /// a test assembly; this rule needs both under control, hence the explicit path and the renamed assembly here.
         /// </summary>
-        private static Task VerifyAsync(string fixture, string path, string assemblyName, params DiagnosticResult[] expected)
+        private static Task VerifyAsync(string fixture, string path, string assemblyName,
+            params DiagnosticResult[] expected)
         {
-            var test = new NamedProjectTest(assemblyName);
-            test.TestState.Sources.Add((path, File.ReadAllText(Path.Combine(TestDataFiles.Root, "UTF4005", fixture + ".cs"))));
+            var test = new Verifier.Test();
+            // DefaultTestProjectName is read by the base constructor and the harness looks the project up by that name
+            // afterwards, so only the assembly name is changed.
+            test.SolutionTransforms.Add((solution, projectId) =>
+                solution.WithProjectAssemblyName(projectId, assemblyName));
+            test.TestState.Sources.Add((path,
+                File.ReadAllText(Path.Combine(TestDataFiles.Root, "UTF4005", fixture + ".cs"))));
             foreach (var dummy in TestDataFiles.Dummies)
             {
                 test.TestState.Sources.Add(dummy);
@@ -97,16 +103,6 @@ namespace UTF.Analyzers.Tests
 
             test.ExpectedDiagnostics.AddRange(expected);
             return test.RunAsync();
-        }
-
-        private sealed class NamedProjectTest : Verifier.Test
-        {
-            public NamedProjectTest(string assemblyName)
-            {
-                // DefaultTestProjectName is read by the base constructor, before a subclass constructor can set it,
-                // and the harness looks the project up by that name afterwards, so only the assembly name is changed.
-                SolutionTransforms.Add((solution, projectId) => solution.WithProjectAssemblyName(projectId, assemblyName));
-            }
         }
     }
 }
