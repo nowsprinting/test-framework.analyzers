@@ -9,6 +9,14 @@ namespace NUnit.Framework
     {
         public static ResolvableConstraintExpression Exception => throw new NotImplementedException();
 
+        public static ExactTypeConstraint TargetInvocationException => throw new NotImplementedException();
+
+        public static ExactTypeConstraint ArgumentException => throw new NotImplementedException();
+
+        public static ExactTypeConstraint ArgumentNullException => throw new NotImplementedException();
+
+        public static ExactTypeConstraint InvalidOperationException => throw new NotImplementedException();
+
         public static ThrowsNothingConstraint Nothing => throw new NotImplementedException();
 
         public static ExactTypeConstraint TypeOf<TExpected>()
