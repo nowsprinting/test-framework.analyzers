@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -19,18 +18,6 @@ public sealed class BusyWaitAnalyzer : DiagnosticAnalyzer
 
     // The BCL calls that only pass time. The list is closed: it does not grow with libraries or projects.
     private static readonly string[] ThreadPassTimeNames = { "Sleep", "Yield", "SpinWait" };
-
-    private static readonly string[] HookAttributeNames =
-    {
-        "NUnit.Framework.SetUpAttribute",
-        "NUnit.Framework.TearDownAttribute",
-        "NUnit.Framework.OneTimeSetUpAttribute",
-        "NUnit.Framework.OneTimeTearDownAttribute",
-        "UnityEngine.TestTools.UnitySetUpAttribute",
-        "UnityEngine.TestTools.UnityTearDownAttribute",
-        "UnityEngine.TestTools.UnityOneTimeSetUpAttribute",
-        "UnityEngine.TestTools.UnityOneTimeTearDownAttribute"
-    };
 
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
@@ -57,69 +44,14 @@ public sealed class BusyWaitAnalyzer : DiagnosticAnalyzer
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
         var compilation = context.Compilation;
-        var testMethods = TestMethodAnalysis.TryCreate(compilation);
         var thread = compilation.GetTypeByMetadataName("System.Threading.Thread");
         var spinWait = compilation.GetTypeByMetadataName("System.Threading.SpinWait");
-        if (testMethods is null || thread is null || spinWait is null)
+        if (thread is null || spinWait is null)
         {
             return;
         }
 
-        var hooks = new INamedTypeSymbol?[HookAttributeNames.Length];
-        for (var i = 0; i < hooks.Length; i++)
-        {
-            hooks[i] = compilation.GetTypeByMetadataName(HookAttributeNames[i]);
-        }
-
-        var analysis = new CompilationAnalysis(compilation, testMethods, hooks, thread, spinWait);
-        context.RegisterSymbolAction(analysis.AnalyzeMethod, SymbolKind.Method);
-    }
-
-    private sealed class CompilationAnalysis
-    {
-        private readonly Compilation _compilation;
-        private readonly TestMethodAnalysis _testMethods;
-        private readonly INamedTypeSymbol?[] _hooks;
-        private readonly INamedTypeSymbol _thread;
-        private readonly INamedTypeSymbol _spinWait;
-
-        // A wait is reported at the loop, so a helper reached from several test methods, or a test method that is
-        // also awaited by another one, would be reported once per walk; the set keeps the first report only.
-        private readonly ConcurrentDictionary<Location, bool> _reported = new();
-
-        public CompilationAnalysis(Compilation compilation, TestMethodAnalysis testMethods,
-            INamedTypeSymbol?[] hooks, INamedTypeSymbol thread, INamedTypeSymbol spinWait)
-        {
-            _compilation = compilation;
-            _testMethods = testMethods;
-            _hooks = hooks;
-            _thread = thread;
-            _spinWait = spinWait;
-        }
-
-        public void AnalyzeMethod(SymbolAnalysisContext context)
-        {
-            var method = (IMethodSymbol)context.Symbol;
-            if (!_testMethods.IsTestMethod(method) && !UnityHookMethodAnalysis.HasAnyAttribute(method, _hooks))
-            {
-                return;
-            }
-
-            if (OperationAnalysis.MethodBody(_compilation, method, context.CancellationToken) is not { } body)
-            {
-                return;
-            }
-
-            var walker = new Walker(_compilation, _thread, _spinWait, context.CancellationToken);
-            walker.Visit(body, 0);
-            foreach (var (location, name) in walker.Found)
-            {
-                if (_reported.TryAdd(location, true))
-                {
-                    context.ReportDiagnostic(Diagnostic.Create(Rule, location, name));
-                }
-            }
-        }
+        TestOrHookMethodWalk.Register(context, Rule, token => new Walker(compilation, thread, spinWait, token));
     }
 
     private sealed class Walker : DepthBoundedWalker
