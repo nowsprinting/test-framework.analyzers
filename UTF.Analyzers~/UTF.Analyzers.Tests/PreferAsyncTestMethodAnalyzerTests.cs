@@ -22,6 +22,14 @@ namespace UTF.Analyzers.Tests
             await Verifier.VerifyAsync($"UTF4006/{fixture}.cs", expected);
         }
 
+        [Fact]
+        public async Task HelperSharedByTests_ReportsEachTest()
+        {
+            await Verifier.VerifyAsync("UTF4006/HelperSharedByTests.cs",
+                Verifier.Diagnostic().WithLocation(12, 16).WithArguments("Test1"),
+                Verifier.Diagnostic().WithLocation(18, 16).WithArguments("Test2"));
+        }
+
         [Theory]
         [InlineData("YieldCoroutineUnderTest")]
         [InlineData("YieldStartCoroutine")]

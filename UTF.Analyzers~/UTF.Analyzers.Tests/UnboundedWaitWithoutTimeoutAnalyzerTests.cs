@@ -23,10 +23,19 @@ namespace UTF.Analyzers.Tests
         [InlineData("LoopInLocalFunction", 19, 17, "while")]
         [InlineData("TimeoutOnBaseClass", 21, 13, "while")]
         [InlineData("ClockReadInLoopBody", 16, 13, "while")]
+        [InlineData("RecursiveHelper", 14, 26, "Poll")]
         public async Task UnboundedWaitWithoutTimeout_ReportsAtWait(string fixture, int line, int column, string wait)
         {
             var expected = Verifier.Diagnostic().WithLocation(line, column).WithArguments(wait);
             await Verifier.VerifyAsync($"UTF4001/{fixture}.cs", expected);
+        }
+
+        [Fact]
+        public async Task HelperSharedByTests_ReportsAtEachCallSite()
+        {
+            await Verifier.VerifyAsync("UTF4001/HelperSharedByTests.cs",
+                Verifier.Diagnostic().WithLocation(14, 26).WithArguments("WaitForFlag"),
+                Verifier.Diagnostic().WithLocation(20, 26).WithArguments("WaitForFlag"));
         }
 
         [Fact]

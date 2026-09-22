@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
@@ -70,6 +71,15 @@ public sealed class PreferAsyncTestMethodAnalyzer : DiagnosticAnalyzer
         private readonly INamedTypeSymbol _customYieldInstruction;
         private readonly INamedTypeSymbol _coroutine;
 
+        // Whether a helper reached at depth 1 or 2 yields only Unity instructions, shared by every test method of the
+        // compilation. The fixture the walk started from is not part of the key, so that a base-class helper is
+        // walked once for all the fixtures deriving from it; the helpers it yields on its own type or its bases pass
+        // the fixture check for every one of them.
+        // ponytail: a base helper that yields a method of a derived fixture resolves for whichever fixture is
+        // analyzed first, add the fixture to the key if anyone writes one.
+        private readonly ConcurrentDictionary<IMethodSymbol, bool>[] _helperResults =
+            new ConcurrentDictionary<IMethodSymbol, bool>[DepthBoundedWalker.MaxDepth + 1];
+
         public Walk(Compilation compilation, TestMethodAnalysis testMethods, INamedTypeSymbol yieldInstruction,
             INamedTypeSymbol customYieldInstruction, INamedTypeSymbol coroutine)
         {
@@ -79,6 +89,10 @@ public sealed class PreferAsyncTestMethodAnalyzer : DiagnosticAnalyzer
             _yieldInstruction = yieldInstruction;
             _customYieldInstruction = customYieldInstruction;
             _coroutine = coroutine;
+            for (var depth = 1; depth <= DepthBoundedWalker.MaxDepth; depth++)
+            {
+                _helperResults[depth] = new ConcurrentDictionary<IMethodSymbol, bool>(SymbolEqualityComparer.Default);
+            }
         }
 
         public void AnalyzeMethod(SymbolAnalysisContext context)
@@ -115,8 +129,26 @@ public sealed class PreferAsyncTestMethodAnalyzer : DiagnosticAnalyzer
         private bool YieldsOnlyUnityInstructions(IMethodSymbol method, INamedTypeSymbol fixture, int depth,
             CancellationToken cancellationToken)
         {
-            if (depth > DepthBoundedWalker.MaxDepth
-                || OperationAnalysis.MethodBody(_compilation, method, cancellationToken) is not { } body)
+            if (depth > DepthBoundedWalker.MaxDepth)
+            {
+                return false;
+            }
+
+            if (depth == 0)
+            {
+                return WalkYields(method, fixture, depth, cancellationToken);
+            }
+
+            var results = _helperResults[depth];
+            return results.TryGetValue(method, out var cached)
+                ? cached
+                : results.GetOrAdd(method, WalkYields(method, fixture, depth, cancellationToken));
+        }
+
+        private bool WalkYields(IMethodSymbol method, INamedTypeSymbol fixture, int depth,
+            CancellationToken cancellationToken)
+        {
+            if (OperationAnalysis.MethodBody(_compilation, method, cancellationToken) is not { } body)
             {
                 return false;
             }

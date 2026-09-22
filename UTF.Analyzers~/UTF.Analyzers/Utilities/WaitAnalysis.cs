@@ -27,6 +27,7 @@ internal sealed class WaitAnalysis
     };
 
     private readonly Compilation _compilation;
+    private readonly DepthBoundedWalker.CalleeCache _cache = new();
     private readonly INamedTypeSymbol? _waitUntil;
     private readonly INamedTypeSymbol? _waitWhile;
     private readonly INamedTypeSymbol? _uniTask;
@@ -207,7 +208,7 @@ internal sealed class WaitAnalysis
         private readonly WaitAnalysis _analysis;
 
         public Walker(WaitAnalysis analysis, CancellationToken cancellationToken)
-            : base(analysis._compilation, cancellationToken)
+            : base(analysis._compilation, analysis._cache, cancellationToken)
         {
             _analysis = analysis;
         }

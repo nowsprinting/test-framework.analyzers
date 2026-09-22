@@ -51,7 +51,9 @@ public sealed class BusyWaitAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        TestOrHookMethodWalk.Register(context, Rule, token => new Walker(compilation, thread, spinWait, token));
+        var cache = new DepthBoundedWalker.CalleeCache();
+        TestOrHookMethodWalk.Register(context, Rule,
+            token => new Walker(compilation, cache, thread, spinWait, token));
     }
 
     private sealed class Walker : DepthBoundedWalker
@@ -59,9 +61,9 @@ public sealed class BusyWaitAnalyzer : DiagnosticAnalyzer
         private readonly INamedTypeSymbol _thread;
         private readonly INamedTypeSymbol _spinWait;
 
-        public Walker(Compilation compilation, INamedTypeSymbol thread, INamedTypeSymbol spinWait,
-            CancellationToken cancellationToken)
-            : base(compilation, cancellationToken)
+        public Walker(Compilation compilation, CalleeCache cache, INamedTypeSymbol thread,
+            INamedTypeSymbol spinWait, CancellationToken cancellationToken)
+            : base(compilation, cache, cancellationToken)
         {
             _thread = thread;
             _spinWait = spinWait;
