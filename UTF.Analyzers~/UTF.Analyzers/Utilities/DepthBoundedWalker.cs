@@ -15,7 +15,7 @@ internal abstract class DepthBoundedWalker
     /// <summary>
     /// Deepest body that is walked; the analyzed method body is depth 0.
     /// </summary>
-    protected const int MaxDepth = 2;
+    internal const int MaxDepth = 2;
 
     private readonly Compilation _compilation;
     private readonly CancellationToken _cancellationToken;

@@ -7,14 +7,15 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace UTF.Analyzers.Utilities;
 
 /// <summary>
-/// Shared by UTF5003, UTF5004, and UTF4005 (DerivesFrom only): which attribute classes implement an action interface, and the AttributeUsage the compiler applies to them.
+/// Shared by UTF5003, UTF5004, UTF4005, and UTF4006 (DerivesFrom only): which attribute classes implement an action interface, and the AttributeUsage the compiler applies to them.
 /// </summary>
 internal static class ActionAttributeAnalysis
 {
     /// <summary>
     /// Whether the class can be applied as an attribute and implements the action interface.
     /// </summary>
-    public static bool IsActionAttributeClass(INamedTypeSymbol symbol, INamedTypeSymbol interfaceType, INamedTypeSymbol attribute)
+    public static bool IsActionAttributeClass(INamedTypeSymbol symbol, INamedTypeSymbol interfaceType,
+        INamedTypeSymbol attribute)
     {
         return symbol.TypeKind == TypeKind.Class && DerivesFrom(symbol, attribute) && Implements(symbol, interfaceType);
     }
@@ -22,7 +23,8 @@ internal static class ActionAttributeAnalysis
     /// <summary>
     /// Resolves a SimpleBaseType node to the class declaring it when the entry names the interface or an interface derived from it.
     /// </summary>
-    public static INamedTypeSymbol? ClassNamingInterface(SyntaxNodeAnalysisContext context, INamedTypeSymbol interfaceType)
+    public static INamedTypeSymbol? ClassNamingInterface(SyntaxNodeAnalysisContext context,
+        INamedTypeSymbol interfaceType)
     {
         var entry = (SimpleBaseTypeSyntax)context.Node;
         if (entry.Parent?.Parent is not ClassDeclarationSyntax classDeclaration
