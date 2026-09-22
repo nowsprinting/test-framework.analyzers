@@ -1,9 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 using UTF.Analyzers.Utilities;
@@ -17,9 +16,6 @@ namespace UTF.Analyzers;
 public sealed class PreferAsyncTestMethodAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "UTF4006";
-
-    // Deepest helper body that is walked; the test method body is depth 0, as in DepthBoundedWalker.
-    private const int MaxDepth = 2;
 
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
@@ -47,15 +43,15 @@ public sealed class PreferAsyncTestMethodAnalyzer : DiagnosticAnalyzer
     {
         var compilation = context.Compilation;
         var testMethods = TestMethodAnalysis.TryCreate(compilation);
-        var enumerator = compilation.GetTypeByMetadataName("System.Collections.IEnumerator");
         var yieldInstruction = compilation.GetTypeByMetadataName("UnityEngine.YieldInstruction");
         var customYieldInstruction = compilation.GetTypeByMetadataName("UnityEngine.CustomYieldInstruction");
-        if (testMethods is null || enumerator is null || yieldInstruction is null || customYieldInstruction is null)
+        var coroutine = compilation.GetTypeByMetadataName("UnityEngine.Coroutine");
+        if (testMethods is null || yieldInstruction is null || customYieldInstruction is null || coroutine is null)
         {
             return;
         }
 
-        var coroutine = compilation.GetTypeByMetadataName("UnityEngine.Coroutine");
+        var enumerator = compilation.GetSpecialType(SpecialType.System_Collections_IEnumerator);
         context.RegisterSymbolAction(c =>
         {
             var method = (IMethodSymbol)c.Symbol;
@@ -74,18 +70,20 @@ public sealed class PreferAsyncTestMethodAnalyzer : DiagnosticAnalyzer
         }, SymbolKind.Method);
     }
 
+    // DepthBoundedWalker is not reused: it descends into lambdas and local functions, whereas a yield in a lambda
+    // belongs to the lambda and must not count for the method; and an operand it cannot see through must exempt the
+    // method here rather than go unreported.
     private sealed class Walk
     {
         private readonly Compilation _compilation;
         private readonly INamedTypeSymbol _yieldInstruction;
         private readonly INamedTypeSymbol _customYieldInstruction;
-        private readonly INamedTypeSymbol? _coroutine;
+        private readonly INamedTypeSymbol _coroutine;
         private readonly INamedTypeSymbol _fixture;
         private readonly CancellationToken _cancellationToken;
-        private readonly HashSet<IMethodSymbol> _inProgress = new(SymbolEqualityComparer.Default);
 
         public Walk(Compilation compilation, INamedTypeSymbol yieldInstruction,
-            INamedTypeSymbol customYieldInstruction, INamedTypeSymbol? coroutine, INamedTypeSymbol fixture,
+            INamedTypeSymbol customYieldInstruction, INamedTypeSymbol coroutine, INamedTypeSymbol fixture,
             CancellationToken cancellationToken)
         {
             _compilation = compilation;
@@ -96,36 +94,32 @@ public sealed class PreferAsyncTestMethodAnalyzer : DiagnosticAnalyzer
             _cancellationToken = cancellationToken;
         }
 
-        // Anything the walk cannot see through counts as not convertible, the opposite of DepthBoundedWalker, because
-        // the report requires every yield to be convertible; that is why the shared walker is not reused here.
+        // A method with no yield statement hands over an enumerator built elsewhere, which the walk cannot inspect.
+        // The depth bound also ends a recursive helper, so no in-progress set is needed.
         public bool YieldsOnlyUnityInstructions(IMethodSymbol method, int depth)
         {
-            if (depth > MaxDepth || !_inProgress.Add(method))
+            if (depth > DepthBoundedWalker.MaxDepth
+                || OperationAnalysis.MethodBody(_compilation, method, _cancellationToken) is not { } body)
             {
                 return false;
             }
 
-            try
+            var isIterator = false;
+            foreach (var yield in Yields(body))
             {
-                var body = OperationAnalysis.MethodBody(_compilation, method, _cancellationToken);
-                return body is not null && IsIterator(body) && Yields(body).All(y => IsConvertible(y, depth));
+                isIterator = true;
+                if (yield.ReturnedValue is { } returned
+                    && !IsConvertible(OperationAnalysis.WithoutImplicitConversions(returned), depth))
+                {
+                    return false;
+                }
             }
-            finally
-            {
-                _inProgress.Remove(method);
-            }
-        }
 
-        // A method that returns an enumerator built elsewhere hands over a coroutine the walk cannot inspect.
-        private static bool IsIterator(IOperation body)
-        {
-            return body.Syntax.DescendantNodes(n => n is not AnonymousFunctionExpressionSyntax
-                                                    && n is not LocalFunctionStatementSyntax)
-                .OfType<YieldStatementSyntax>().Any();
+            return isIterator;
         }
 
         // Yields in a lambda or local function belong to that function, not to the method.
-        private IEnumerable<IOperation> Yields(IOperation operation)
+        private IEnumerable<IReturnOperation> Yields(IOperation operation)
         {
             _cancellationToken.ThrowIfCancellationRequested();
             switch (operation)
@@ -133,16 +127,16 @@ public sealed class PreferAsyncTestMethodAnalyzer : DiagnosticAnalyzer
                 case IAnonymousFunctionOperation:
                 case ILocalFunctionOperation:
                     yield break;
-                case IReturnOperation { Kind: OperationKind.YieldReturn, ReturnedValue: { } returned }:
-                    yield return OperationAnalysis.WithoutImplicitConversions(returned);
+                case IReturnOperation { Kind: OperationKind.YieldReturn or OperationKind.YieldBreak } yield:
+                    yield return yield;
                     yield break;
             }
 
             foreach (var child in operation.ChildOperations)
             {
-                foreach (var yielded in Yields(child))
+                foreach (var yield in Yields(child))
                 {
-                    yield return yielded;
+                    yield return yield;
                 }
             }
         }
@@ -154,65 +148,29 @@ public sealed class PreferAsyncTestMethodAnalyzer : DiagnosticAnalyzer
                 return true;
             }
 
-            if (yielded.Type is { } type && IsUnityInstruction(type))
+            if (yielded.Type is INamedTypeSymbol type && IsUnityInstruction(type))
             {
                 return true;
             }
 
             // A helper on any other type, including a test-only MonoBehaviour, is the code under test.
-            return yielded is IInvocationOperation invocation
-                   && IsDeclaredOnFixture(invocation.TargetMethod.OriginalDefinition)
-                   && YieldsOnlyUnityInstructions(invocation.TargetMethod.OriginalDefinition, depth + 1);
-        }
-
-        private bool IsDeclaredOnFixture(IMethodSymbol method)
-        {
-            for (var type = _fixture; type is not null; type = type.BaseType)
-            {
-                if (SymbolEqualityComparer.Default.Equals(method.ContainingType, type))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            var callee = yielded is IInvocationOperation invocation ? invocation.TargetMethod.OriginalDefinition : null;
+            return callee is not null
+                   && (SymbolEqualityComparer.Default.Equals(callee.ContainingType, _fixture)
+                       || ActionAttributeAnalysis.DerivesFrom(_fixture, callee.ContainingType))
+                   && YieldsOnlyUnityInstructions(callee, depth + 1);
         }
 
         // The namespace is checked rather than the assembly: in tests the Unity types are dummies compiled into the
         // test assembly. Coroutine derives from YieldInstruction but stands for a coroutine of the code under test.
-        private bool IsUnityInstruction(ITypeSymbol type)
+        private bool IsUnityInstruction(INamedTypeSymbol type)
         {
-            if (SymbolEqualityComparer.Default.Equals(type, _coroutine) || !IsInUnityEngineNamespace(type))
-            {
-                return false;
-            }
-
-            for (var t = type; t is not null; t = t.BaseType)
-            {
-                if (SymbolEqualityComparer.Default.Equals(t, _yieldInstruction)
-                    || SymbolEqualityComparer.Default.Equals(t, _customYieldInstruction))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static bool IsInUnityEngineNamespace(ITypeSymbol type)
-        {
-            var ns = type.ContainingNamespace;
-            while (ns is { IsGlobalNamespace: false })
-            {
-                if (ns.ContainingNamespace is { IsGlobalNamespace: true })
-                {
-                    return ns.Name == "UnityEngine";
-                }
-
-                ns = ns.ContainingNamespace;
-            }
-
-            return false;
+            var ns = type.ContainingNamespace.ToDisplayString();
+            return !SymbolEqualityComparer.Default.Equals(type, _coroutine)
+                   && (string.Equals(ns, "UnityEngine", StringComparison.Ordinal)
+                       || ns.StartsWith("UnityEngine.", StringComparison.Ordinal))
+                   && (ActionAttributeAnalysis.DerivesFrom(type, _yieldInstruction)
+                       || ActionAttributeAnalysis.DerivesFrom(type, _customYieldInstruction));
         }
     }
 }
