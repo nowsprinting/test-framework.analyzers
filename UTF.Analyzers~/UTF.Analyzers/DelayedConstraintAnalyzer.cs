@@ -1,9 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
-using Microsoft.CodeAnalysis.Text;
 using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
@@ -55,7 +53,7 @@ public sealed class DelayedConstraintAnalyzer : DiagnosticAnalyzer
             var location = operationContext.Operation switch
             {
                 IInvocationOperation invocation when afterMethods.Contains(invocation.TargetMethod.OriginalDefinition) =>
-                    AfterLocation(invocation),
+                    OperationAnalysis.MemberNameLocation(invocation.Syntax),
                 IObjectCreationOperation creation when SymbolEqualityComparer.Default.Equals(
                     creation.Type?.OriginalDefinition, delayedConstraint) => creation.Syntax.GetLocation(),
                 _ => null
@@ -65,18 +63,5 @@ public sealed class DelayedConstraintAnalyzer : DiagnosticAnalyzer
                 operationContext.ReportDiagnostic(Diagnostic.Create(Rule, location));
             }
         }, OperationKind.Invocation, OperationKind.ObjectCreation);
-    }
-
-    /// <summary>
-    /// Highlights only "After(...)" rather than the whole chain, which usually starts with an unrelated
-    /// constraint such as Is.EqualTo(...) that the user must keep.
-    /// </summary>
-    private static Location AfterLocation(IInvocationOperation invocation)
-    {
-        var syntax = invocation.Syntax;
-        var start = syntax is InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax access }
-            ? access.Name.SpanStart
-            : syntax.SpanStart;
-        return Location.Create(syntax.SyntaxTree, TextSpan.FromBounds(start, syntax.Span.End));
     }
 }

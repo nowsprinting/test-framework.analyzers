@@ -17,22 +17,16 @@ namespace UTF.Analyzers.Tests
         [InlineData("AssumeThat", 13, 52, "FileInfo.Length")]
         [InlineData("IsTypeOfAndProperty", 14, 59, "FileInfo.Length")]
         [InlineData("UserTypeProperty", 18, 47, "ScoreBoard.Score")]
-        public async Task PropertyOfTargetType_ReportsAtPropertyName(string fixture, int line, int column, string property)
+        [InlineData("HasSomePropertyOnArray", 14, 41, "FileInfo.Length")]
+        [InlineData("HasAllLengthOnList", 14, 40, "FileInfo.Length")]
+        [InlineData("HasExactlyProperty", 14, 47, "FileInfo.Length")]
+        [InlineData("OrderedBy", 14, 43, "FileInfo.Length")]
+        [InlineData("ListMapProperty", 14, 41, "FileInfo.Length")]
+        public async Task StrippableProperty_ReportsAtPropertyName(string fixture, int line, int column,
+            string property)
         {
             await Verifier.VerifyAsync($"UTF2006/{fixture}.cs",
                 Verifier.Diagnostic().WithLocation(line, column).WithArguments(property));
-        }
-
-        [Theory]
-        [InlineData("HasSomePropertyOnArray", 14, 41)]
-        [InlineData("HasAllLengthOnList", 14, 40)]
-        [InlineData("HasExactlyProperty", 14, 47)]
-        [InlineData("OrderedBy", 14, 43)]
-        [InlineData("ListMapProperty", 14, 41)]
-        public async Task PropertyOfElementType_ReportsAtPropertyName(string fixture, int line, int column)
-        {
-            await Verifier.VerifyAsync($"UTF2006/{fixture}.cs",
-                Verifier.Diagnostic().WithLocation(line, column).WithArguments("FileInfo.Length"));
         }
 
         [Fact]

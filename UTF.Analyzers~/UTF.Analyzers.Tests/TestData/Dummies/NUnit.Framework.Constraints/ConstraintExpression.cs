@@ -14,19 +14,13 @@ namespace NUnit.Framework.Constraints
 
         public ConstraintExpression Some => throw new NotImplementedException();
 
-        public ConstraintExpression None => throw new NotImplementedException();
-
         public ResolvableConstraintExpression Length => throw new NotImplementedException();
-
-        public ResolvableConstraintExpression Count => throw new NotImplementedException();
 
         public ResolvableConstraintExpression Message => throw new NotImplementedException();
 
         public ResolvableConstraintExpression InnerException => throw new NotImplementedException();
 
         public ConstraintExpression With => throw new NotImplementedException();
-
-        public CollectionOrderedConstraint Ordered => throw new NotImplementedException();
 
         public ConstraintExpression Exactly(int expectedCount)
         {
@@ -49,11 +43,6 @@ namespace NUnit.Framework.Constraints
         }
 
         public ExactTypeConstraint TypeOf<TExpected>()
-        {
-            throw new NotImplementedException();
-        }
-
-        public InstanceOfTypeConstraint InstanceOf<TExpected>()
         {
             throw new NotImplementedException();
         }

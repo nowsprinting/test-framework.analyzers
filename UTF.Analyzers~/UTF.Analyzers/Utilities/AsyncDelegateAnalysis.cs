@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -176,35 +175,6 @@ internal sealed class AsyncDelegateAnalysis
     }
 
     /// <summary>
-    /// Yields the nodes of a constraint expression such as Throws.TypeOf&lt;T&gt;().With.Message.EqualTo(...) from the
-    /// rightmost call to the leftmost member, skipping conversions. An extension-method call
-    /// (Is.Not.AllocatingGCMemory()) carries its receiver as the first argument, not as Instance. The walk stops at
-    /// any other node (a local, field, parameter, or method result is not followed to its origin: following
-    /// initializers needs a semantic model of the declaring file and still misses reassignments).
-    /// </summary>
-    public static IEnumerable<IOperation> ConstraintChain(IOperation? operation)
-    {
-        while (operation is not null)
-        {
-            if (operation is IConversionOperation conversion)
-            {
-                operation = conversion.Operand;
-                continue;
-            }
-
-            yield return operation;
-            operation = operation switch
-            {
-                IInvocationOperation { Instance: { } instance } => instance,
-                IInvocationOperation { TargetMethod.IsExtensionMethod: true, Arguments.Length: > 0 } call =>
-                    call.Arguments[0].Value,
-                IPropertyReferenceOperation property => property.Instance,
-                _ => null,
-            };
-        }
-    }
-
-    /// <summary>
     /// Returns the display name of the leftmost member ("Throws.TypeOf", "ThrowsConstraint") when it belongs to Throws
     /// or is a ThrowsConstraint construction, or null otherwise. An unfollowed Throws constraint is reported by UTF2003
     /// rather than going unreported.
@@ -212,7 +182,7 @@ internal sealed class AsyncDelegateAnalysis
     private string? ThrowsRoot(IOperation? operation)
     {
         ISymbol? root = null;
-        foreach (var node in ConstraintChain(operation))
+        foreach (var node in OperationAnalysis.ConstraintChain(operation))
         {
             switch (node)
             {

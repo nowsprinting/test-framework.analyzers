@@ -13,15 +13,9 @@ namespace NUnit.Framework
 
         public static ConstraintExpression Some => throw new NotImplementedException();
 
-        public static ConstraintExpression None => throw new NotImplementedException();
-
         public static ResolvableConstraintExpression Length => throw new NotImplementedException();
 
         public static ResolvableConstraintExpression Count => throw new NotImplementedException();
-
-        public static ResolvableConstraintExpression Message => throw new NotImplementedException();
-
-        public static ResolvableConstraintExpression InnerException => throw new NotImplementedException();
 
         public static ConstraintExpression Exactly(int expectedCount)
         {

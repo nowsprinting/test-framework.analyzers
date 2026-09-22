@@ -25,10 +25,5 @@ namespace NUnit.Framework
         {
             throw new NotImplementedException();
         }
-
-        public static InstanceOfTypeConstraint InstanceOf<TExpected>()
-        {
-            throw new NotImplementedException();
-        }
     }
 }
