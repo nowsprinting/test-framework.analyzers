@@ -40,6 +40,18 @@ namespace UTF.Analyzers.Tests
                 Verifier.Diagnostic().WithLocation(line, column).WithArguments(name));
         }
 
+        [Theory]
+        [InlineData("HasLengthOnFileInfo", 13, 52)]
+        [InlineData("ActualValueDelegate", 13, 58)]
+        [InlineData("AssumeThat", 13, 52)]
+        [InlineData("HasAllLengthOnList", 14, 40)]
+        [InlineData("IsTypeOfAndProperty", 14, 59)]
+        public async Task ShorthandOnStrippableProperty_ReportsResolvedProperty(string fixture, int line, int column)
+        {
+            await Verifier.VerifyAsync($"UTF2006/{fixture}.cs",
+                Verifier.Diagnostic().WithLocation(line, column).WithArguments("FileInfo.Length"));
+        }
+
         [Fact]
         public async Task OrderedThenBy_ReportsEachProperty()
         {

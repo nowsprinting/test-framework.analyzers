@@ -135,6 +135,9 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         private readonly ImmutableHashSet<ISymbol> _namedByString;
         private readonly ImmutableHashSet<ISymbol> _propertyMethods;
         private readonly ImmutableDictionary<ISymbol, string> _propertyShorthands;
+        private readonly ImmutableHashSet<ISymbol> _by;
+        private readonly ImmutableHashSet<ISymbol> _listMap;
+        private readonly ImmutableHashSet<ISymbol> _listMapperProperty;
         private readonly ImmutableHashSet<ISymbol> _collectionOperators;
         private readonly ImmutableHashSet<ISymbol> _typeConstraints;
         private readonly ImmutableDictionary<ISymbol, INamedTypeSymbol> _throwsExceptions;
@@ -150,6 +153,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
             var resolvable =
                 compilation.GetTypeByMetadataName("NUnit.Framework.Constraints.ResolvableConstraintExpression");
             var ordered = compilation.GetTypeByMetadataName("NUnit.Framework.Constraints.CollectionOrderedConstraint");
+            var list = compilation.GetTypeByMetadataName("NUnit.Framework.List");
             var listMapper = compilation.GetTypeByMetadataName("NUnit.Framework.ListMapper");
             var expressionTypes = new[] { has, constraintExpression };
 
@@ -162,9 +166,10 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
                 .SelectMany(name => Members(expressionTypes, name).Select(member => (member, name)))
                 .ToImmutableDictionary(p => p.member, p => p.name, SymbolEqualityComparer.Default,
                     StringComparer.Ordinal);
-            _namedByString = _propertyMethods
-                .Union(Members(new[] { ordered }, "By"))
-                .Union(Members(new[] { listMapper }, "Property"));
+            _by = Members(new[] { ordered }, "By");
+            _listMap = Members(new[] { list }, "Map");
+            _listMapperProperty = Members(new[] { listMapper }, "Property");
+            _namedByString = _propertyMethods.Union(_by).Union(_listMapperProperty);
             _collectionOperators = Members(expressionTypes, "All", "Some", "None", "Exactly");
             _typeConstraints = Members(new[] { @is, throws, constraintExpression }, "TypeOf", "InstanceOf")
                 .Where(member => member is IMethodSymbol { IsGenericMethod: true })
@@ -208,8 +213,11 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
             {
                 // Reported wherever it appears and whatever the type: the High stripping level can remove any
                 // property, and the target type is often unknown (object, a constraint in a variable, a subclass).
-                context.ReportDiagnostic(Diagnostic.Create(Rule,
-                    OperationAnalysis.MemberNameLocation(invocation.Syntax), NameArgument(invocation)));
+                // A step of an inline Assert.That constraint is reported by AnalyzeThat instead, which knows its type.
+                if (!IsInThatConstraint(invocation))
+                {
+                    ReportNamedByString(invocation, ListMapElementType(invocation), context);
+                }
             }
             else if (_that.Contains(method))
             {
@@ -224,16 +232,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         /// </summary>
         private void AnalyzeThat(IInvocationOperation invocation, OperationAnalysisContext context)
         {
-            IArgumentOperation? expression = null;
-            foreach (var argument in invocation.Arguments)
-            {
-                if (SymbolEqualityComparer.Default.Equals(argument.Parameter?.Type, _resolveConstraint))
-                {
-                    expression = argument;
-                    break;
-                }
-            }
-
+            var expression = ConstraintArgument(invocation);
             if (expression is null)
             {
                 return;
@@ -258,8 +257,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
 
                 if (_propertyMethods.Contains(member))
                 {
-                    // Reported on its own by Analyze; followed here only so that a later shorthand sees its type.
-                    target = FindProperty(target, ConstantName(step))?.Type;
+                    target = ReportNamedByString((IInvocationOperation)step, target, context)?.Type;
                 }
                 else if (_propertyShorthands.TryGetValue(member, out var name))
                 {
@@ -281,8 +279,80 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
                 {
                     target = operand;
                 }
+                else if (_by.Contains(member))
+                {
+                    ReportNamedByString((IInvocationOperation)step, ElementType(target), context);
+                }
             }
         }
+
+        private IArgumentOperation? ConstraintArgument(IInvocationOperation invocation)
+        {
+            foreach (var argument in invocation.Arguments)
+            {
+                if (SymbolEqualityComparer.Default.Equals(argument.Parameter?.Type, _resolveConstraint))
+                {
+                    return argument;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Reports a property named by a string with the type that declares it when <paramref name="target"/> resolves
+        /// it, or with the name as written otherwise, and returns the resolved property.
+        /// </summary>
+        private IPropertySymbol? ReportNamedByString(IInvocationOperation step, ITypeSymbol? target,
+            OperationAnalysisContext context)
+        {
+            var property = FindProperty(target, ConstantName(step));
+            context.ReportDiagnostic(Diagnostic.Create(Rule, OperationAnalysis.MemberNameLocation(step.Syntax),
+                property is null ? NameArgument(step) : $"{property.ContainingType.Name}.{property.Name}"));
+            return property;
+        }
+
+        /// <summary>
+        /// Whether <paramref name="invocation"/> is a step of a constraint chain written inline as the constraint
+        /// argument of Assert.That or Assume.That, i.e. a step that <see cref="AnalyzeThat"/> visits. Climbs the same
+        /// links that <see cref="OperationAnalysis.ConstraintChain"/> descends.
+        /// </summary>
+        private bool IsInThatConstraint(IOperation invocation)
+        {
+            var current = invocation;
+            while (current.Parent is { } parent)
+            {
+                switch (parent)
+                {
+                    case IConversionOperation:
+                    case IInvocationOperation call when call.Instance == current:
+                    case IPropertyReferenceOperation property when property.Instance == current:
+                        current = parent;
+                        break;
+                    case IArgumentOperation { Parent: IInvocationOperation { TargetMethod.IsExtensionMethod: true } call }
+                        when call.Arguments[0] == parent:
+                        current = call;
+                        break;
+                    case IArgumentOperation { Parent: IInvocationOperation that } argument:
+                        return SymbolEqualityComparer.Default.Equals(argument.Parameter?.Type, _resolveConstraint) &&
+                               _that.Contains(that.TargetMethod.OriginalDefinition);
+                    default:
+                        return false;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// The element type of the collection given to List.Map for List.Map(collection).Property(name), or null.
+        /// </summary>
+        private ITypeSymbol? ListMapElementType(IInvocationOperation invocation) =>
+            _listMapperProperty.Contains(invocation.TargetMethod.OriginalDefinition) &&
+            invocation.Instance is IInvocationOperation { Arguments.Length: 1 } map &&
+            _listMap.Contains(map.TargetMethod.OriginalDefinition)
+                ? ElementType(OperationAnalysis.WithoutImplicitConversions(map.Arguments[0].Value).Type)
+                : null;
 
         /// <summary>
         /// Returns the property a shorthand (Has.Length, .With.Message) reads on <paramref name="target"/>, reporting it
