@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace UTF.Analyzers.Utilities;
 
 /// <summary>
-/// Shared by UTF5003 and UTF5004: which attribute classes implement an action interface, and the AttributeUsage the compiler applies to them.
+/// Shared by UTF5003, UTF5004, and UTF4005 (DerivesFrom only): which attribute classes implement an action interface, and the AttributeUsage the compiler applies to them.
 /// </summary>
 internal static class ActionAttributeAnalysis
 {
