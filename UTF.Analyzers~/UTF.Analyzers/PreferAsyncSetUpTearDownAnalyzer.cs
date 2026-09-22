@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -33,5 +34,38 @@ public sealed class PreferAsyncSetUpTearDownAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
+        context.RegisterCompilationStartAction(OnCompilationStart);
+    }
+
+    private static void OnCompilationStart(CompilationStartAnalysisContext context)
+    {
+        var compilation = context.Compilation;
+        var walk = UnityYieldWalk.TryCreate(compilation);
+        var unitySetUp = compilation.GetTypeByMetadataName("UnityEngine.TestTools.UnitySetUpAttribute");
+        var unityTearDown = compilation.GetTypeByMetadataName("UnityEngine.TestTools.UnityTearDownAttribute");
+        if (walk is null || unitySetUp is null || unityTearDown is null)
+        {
+            return;
+        }
+
+        var hooks = new[] { unitySetUp, unityTearDown };
+        context.RegisterSymbolAction(symbolContext =>
+        {
+            var method = (IMethodSymbol)symbolContext.Symbol;
+            if (UnityHookMethodAnalysis.FindAttribute(method, hooks) is not { } hook
+                || !walk.IsConvertibleCoroutine(method, symbolContext.CancellationToken))
+            {
+                return;
+            }
+
+            // The replacement is a literal rather than a symbol resolved from the compilation: NUnit's SetUp and
+            // TearDown attributes exist wherever the Unity ones do, so there is nothing to resolve.
+            var replacement = SymbolEqualityComparer.Default.Equals(hook, unitySetUp)
+                ? "SetUpAttribute"
+                : "TearDownAttribute";
+            symbolContext.ReportDiagnostic(Diagnostic.Create(Rule,
+                UnityYieldWalk.SignatureLocation(method, symbolContext.CancellationToken), method.Name, hook.Name,
+                replacement));
+        }, SymbolKind.Method);
     }
 }
