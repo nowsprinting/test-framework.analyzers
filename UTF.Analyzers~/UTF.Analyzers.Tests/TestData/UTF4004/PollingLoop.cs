@@ -1,4 +1,5 @@
 using System.Collections;
+using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -10,6 +11,7 @@ namespace UTF.Analyzers.Tests.TestData.UTF4004
         private bool _flag;
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator Test()
         {
             while (!_flag)

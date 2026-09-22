@@ -13,6 +13,7 @@ namespace UTF.Analyzers.Tests.TestData.UTF4004
         private bool _flag;
 
         [Test]
+        [Timeout(5000)]
         public async Task Async()
         {
             await UniTask.NextFrame();
@@ -22,6 +23,7 @@ namespace UTF.Analyzers.Tests.TestData.UTF4004
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator Coroutine()
         {
             yield return null;
