@@ -89,7 +89,7 @@ public sealed class NonTestDelegateInAllocatingGCMemoryAnalyzer : DiagnosticAnal
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        foreach (var node in AsyncDelegateAnalysis.ConstraintChain(constraint))
+        foreach (var node in OperationAnalysis.ConstraintChain(constraint))
         {
             switch (node)
             {

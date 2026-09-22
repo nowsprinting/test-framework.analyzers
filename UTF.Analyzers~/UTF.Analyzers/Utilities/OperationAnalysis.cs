@@ -1,8 +1,10 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
+using Microsoft.CodeAnalysis.Text;
 
 namespace UTF.Analyzers.Utilities;
 
@@ -47,5 +49,49 @@ internal static class OperationAnalysis
             DoStatementSyntax d => d.DoKeyword.GetLocation(),
             var s => s.GetLocation(),
         };
+    }
+
+    /// <summary>
+    /// Yields the nodes of a constraint expression such as Throws.TypeOf&lt;T&gt;().With.Message.EqualTo(...) from the
+    /// rightmost call to the leftmost member, skipping conversions. An extension-method call
+    /// (Is.Not.AllocatingGCMemory()) carries its receiver as the first argument, not as Instance. The walk stops at
+    /// any other node (a local, field, parameter, or method result is not followed to its origin: following
+    /// initializers needs a semantic model of the declaring file and still misses reassignments).
+    /// </summary>
+    public static IEnumerable<IOperation> ConstraintChain(IOperation? operation)
+    {
+        while (operation is not null)
+        {
+            if (operation is IConversionOperation conversion)
+            {
+                operation = conversion.Operand;
+                continue;
+            }
+
+            yield return operation;
+            operation = operation switch
+            {
+                IInvocationOperation { Instance: { } instance } => instance,
+                IInvocationOperation { TargetMethod.IsExtensionMethod: true, Arguments.Length: > 0 } call =>
+                    call.Arguments[0].Value,
+                IPropertyReferenceOperation property => property.Instance,
+                _ => null,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Highlights only the member of a chain that the diagnostic is about ("After(...)", "Property(...)", "Length")
+    /// rather than the whole chain, which usually starts with unrelated constraints the user must keep.
+    /// </summary>
+    public static Location MemberNameLocation(SyntaxNode syntax)
+    {
+        var start = syntax switch
+        {
+            InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax access } => access.Name.SpanStart,
+            MemberAccessExpressionSyntax access => access.Name.SpanStart,
+            _ => syntax.SpanStart,
+        };
+        return Location.Create(syntax.SyntaxTree, TextSpan.FromBounds(start, syntax.Span.End));
     }
 }
