@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
+using Microsoft.CodeAnalysis.Text;
 using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
@@ -90,8 +92,22 @@ public sealed class PreferAsyncTestMethodAnalyzer : DiagnosticAnalyzer
 
             if (YieldsOnlyUnityInstructions(method, method.ContainingType, 0, context.CancellationToken))
             {
-                context.ReportDiagnostic(Diagnostic.Create(Rule, method.Locations[0], method.Name));
+                context.ReportDiagnostic(Diagnostic.Create(Rule, SignatureLocation(method, context.CancellationToken),
+                    method.Name));
             }
+        }
+
+        // The return type is included in the span because it is what the fix changes, together with the name.
+        private static Location SignatureLocation(IMethodSymbol method, CancellationToken cancellationToken)
+        {
+            if (method.DeclaringSyntaxReferences[0].GetSyntax(cancellationToken) is not MethodDeclarationSyntax
+                declaration)
+            {
+                return method.Locations[0];
+            }
+
+            return Location.Create(declaration.SyntaxTree,
+                TextSpan.FromBounds(declaration.ReturnType.SpanStart, declaration.Identifier.Span.End));
         }
 
         // A method with no yield statement hands over an enumerator built elsewhere, which the walk cannot inspect.

@@ -16,9 +16,9 @@ namespace UTF.Analyzers.Tests
         [InlineData("MeasureFramesScope", 12)]
         [InlineData("NoYieldReturn", 11)]
         [InlineData("YieldNullInLoop", 13)]
-        public async Task ConvertibleCoroutineTest_ReportsAtMethodIdentifier(string fixture, int line)
+        public async Task ConvertibleCoroutineTest_ReportsAtReturnTypeAndName(string fixture, int line)
         {
-            var expected = Verifier.Diagnostic().WithLocation(line, 28).WithArguments("Test");
+            var expected = Verifier.Diagnostic().WithLocation(line, 16).WithArguments("Test");
             await Verifier.VerifyAsync($"UTF4006/{fixture}.cs", expected);
         }
 
