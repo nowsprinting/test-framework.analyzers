@@ -65,8 +65,9 @@ public sealed class FixedTimeWaitAnalyzer : DiagnosticAnalyzer
             }
         }
 
+        var cache = new DepthBoundedWalker.CalleeCache();
         TestOrHookMethodWalk.Register(context, Rule,
-            token => new Walker(compilation, waitForSeconds, waitForSecondsRealtime, methods, token));
+            token => new Walker(compilation, cache, waitForSeconds, waitForSecondsRealtime, methods, token));
     }
 
     private sealed class Walker : DepthBoundedWalker
@@ -75,10 +76,10 @@ public sealed class FixedTimeWaitAnalyzer : DiagnosticAnalyzer
         private readonly INamedTypeSymbol? _waitForSecondsRealtime;
         private readonly List<(INamedTypeSymbol Type, string Name)> _methods;
 
-        public Walker(Compilation compilation, INamedTypeSymbol? waitForSeconds,
+        public Walker(Compilation compilation, CalleeCache cache, INamedTypeSymbol? waitForSeconds,
             INamedTypeSymbol? waitForSecondsRealtime, List<(INamedTypeSymbol Type, string Name)> methods,
             CancellationToken cancellationToken)
-            : base(compilation, cancellationToken)
+            : base(compilation, cache, cancellationToken)
         {
             _waitForSeconds = waitForSeconds;
             _waitForSecondsRealtime = waitForSecondsRealtime;
