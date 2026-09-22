@@ -52,8 +52,10 @@ public sealed class PreferAsyncSetUpTearDownAnalyzer : DiagnosticAnalyzer
         context.RegisterSymbolAction(symbolContext =>
         {
             var method = (IMethodSymbol)symbolContext.Symbol;
-            if (UnityHookMethodAnalysis.FindAttribute(method, hooks) is not { } hook
-                || !walk.IsConvertibleCoroutine(method, symbolContext.CancellationToken))
+            // The walk goes first: its return-type check rejects almost every method with one comparison, whereas
+            // the attribute lookup enumerates the attributes of the method and of every method it overrides.
+            if (!walk.IsConvertibleCoroutine(method, symbolContext.CancellationToken)
+                || UnityHookMethodAnalysis.FindAttribute(method, hooks) is not { } hook)
             {
                 return;
             }

@@ -4,7 +4,6 @@ using UnityEngine.TestTools;
 
 namespace UTF.Analyzers.Tests.TestData.UTF4007
 {
-
     public class YieldCoroutineUnderTest
     {
         [UnityTearDown]

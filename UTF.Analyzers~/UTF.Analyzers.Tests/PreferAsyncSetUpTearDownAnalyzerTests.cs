@@ -7,11 +7,11 @@ namespace UTF.Analyzers.Tests
     public class PreferAsyncSetUpTearDownAnalyzerTests
     {
         [Theory]
-        [InlineData("UnitySetUpYieldNull", 11, 16, "SetUp", "UnitySetUpAttribute", "SetUpAttribute")]
-        [InlineData("YieldFixtureHelper", 11, 16, "SetUp", "UnitySetUpAttribute", "SetUpAttribute")]
-        [InlineData("OverriddenBaseDeclaration", 16, 25, "SetUp", "UnitySetUpAttribute", "SetUpAttribute")]
-        [InlineData("UnityTearDownYieldWaitUntil", 13, 16, "TearDown", "UnityTearDownAttribute", "TearDownAttribute")]
-        [InlineData("NoYieldReturn", 11, 16, "TearDown", "UnityTearDownAttribute", "TearDownAttribute")]
+        [InlineData("UnitySetUpYieldNull", 9, 16, "SetUp", "UnitySetUpAttribute", "SetUpAttribute")]
+        [InlineData("YieldFixtureHelper", 9, 16, "SetUp", "UnitySetUpAttribute", "SetUpAttribute")]
+        [InlineData("OverriddenBaseDeclaration", 14, 25, "SetUp", "UnitySetUpAttribute", "SetUpAttribute")]
+        [InlineData("UnityTearDownYieldWaitUntil", 12, 16, "TearDown", "UnityTearDownAttribute", "TearDownAttribute")]
+        [InlineData("NoYieldReturn", 9, 16, "TearDown", "UnityTearDownAttribute", "TearDownAttribute")]
         public async Task ConvertibleCoroutineHook_ReportsAtReturnTypeAndName(string fixture, int line, int column,
             string name, string attribute, string replacement)
         {
