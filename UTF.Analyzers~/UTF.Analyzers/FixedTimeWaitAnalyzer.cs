@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -16,13 +16,6 @@ namespace UTF.Analyzers;
 public sealed class FixedTimeWaitAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "UTF4004";
-
-    // Yield instructions that complete after a duration, recognized by the type of the yielded value so that an
-    // instruction cached in a field is seen as well as an inline object creation.
-    private static readonly string[] YieldInstructionTypeNames =
-    {
-        "UnityEngine.WaitForSeconds", "UnityEngine.WaitForSecondsRealtime"
-    };
 
     // Methods that complete after a duration, as (containing type, method name). Every overload of a name is a
     // fixed wait: a CancellationToken, PlayerLoopTiming, DelayType, or ignoreTimeScale argument changes which clock
@@ -61,23 +54,9 @@ public sealed class FixedTimeWaitAnalyzer : DiagnosticAnalyzer
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
         var compilation = context.Compilation;
-        var testMethods = TestMethodAnalysis.TryCreate(compilation);
-        if (testMethods is null)
-        {
-            return;
-        }
-
-        var yieldInstructions = ImmutableHashSet.CreateBuilder<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-        foreach (var name in YieldInstructionTypeNames)
-        {
-            if (compilation.GetTypeByMetadataName(name) is { } type)
-            {
-                yieldInstructions.Add(type);
-            }
-        }
-
-        // A handful of entries; a linear scan per invocation is cheaper than a set with a tuple comparer.
-        var methods = ImmutableArray.CreateBuilder<(INamedTypeSymbol Type, string Name)>();
+        var waitForSeconds = compilation.GetTypeByMetadataName("UnityEngine.WaitForSeconds");
+        var waitForSecondsRealtime = compilation.GetTypeByMetadataName("UnityEngine.WaitForSecondsRealtime");
+        var methods = new List<(INamedTypeSymbol Type, string Name)>();
         foreach (var (typeName, method) in MethodNames)
         {
             if (compilation.GetTypeByMetadataName(typeName) is { } type)
@@ -86,41 +65,68 @@ public sealed class FixedTimeWaitAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        var analysis = new CompilationAnalysis(compilation, testMethods,
-            UnityHookMethodAnalysis.ResolveAllHookAttributes(compilation), yieldInstructions.ToImmutable(),
-            methods.ToImmutable());
-        context.RegisterSymbolAction(analysis.AnalyzeMethod, SymbolKind.Method);
+        TestOrHookMethodWalk.Register(context, Rule,
+            token => new Walker(compilation, waitForSeconds, waitForSecondsRealtime, methods, token));
     }
 
-    private sealed class CompilationAnalysis
+    private sealed class Walker : DepthBoundedWalker
     {
-        private readonly Compilation _compilation;
-        private readonly TestMethodAnalysis _testMethods;
-        private readonly INamedTypeSymbol?[] _hooks;
-        private readonly ImmutableHashSet<INamedTypeSymbol> _yieldInstructions;
-        private readonly ImmutableArray<(INamedTypeSymbol Type, string Name)> _methods;
+        private readonly INamedTypeSymbol? _waitForSeconds;
+        private readonly INamedTypeSymbol? _waitForSecondsRealtime;
+        private readonly List<(INamedTypeSymbol Type, string Name)> _methods;
 
-        // A wait is reported at the wait, so a helper reached from several test methods would be reported once per
-        // walk; the set keeps the first report only, as in UTF4003.
-        private readonly ConcurrentDictionary<Location, bool> _reported = new();
-
-        public CompilationAnalysis(Compilation compilation, TestMethodAnalysis testMethods,
-            INamedTypeSymbol?[] hooks, ImmutableHashSet<INamedTypeSymbol> yieldInstructions,
-            ImmutableArray<(INamedTypeSymbol Type, string Name)> methods)
+        public Walker(Compilation compilation, INamedTypeSymbol? waitForSeconds,
+            INamedTypeSymbol? waitForSecondsRealtime, List<(INamedTypeSymbol Type, string Name)> methods,
+            CancellationToken cancellationToken)
+            : base(compilation, cancellationToken)
         {
-            _compilation = compilation;
-            _testMethods = testMethods;
-            _hooks = hooks;
-            _yieldInstructions = yieldInstructions;
+            _waitForSeconds = waitForSeconds;
+            _waitForSecondsRealtime = waitForSecondsRealtime;
             _methods = methods;
         }
 
+        // A wait found in a callee stays reported at the wait, as in UTF4003, because the fix is applied there.
+        // A yield return is recognized by the type of the yielded value rather than by the object creation, so that
+        // an instruction cached in a field is seen too.
+        protected override bool TryMatch(IOperation operation)
+        {
+            (Location, string)? wait = operation switch
+            {
+                IReturnOperation { Kind: OperationKind.YieldReturn, ReturnedValue: { } returned }
+                    when OperationAnalysis.WithoutImplicitConversions(returned) is { Type: { } type } value
+                         && IsFixedWaitInstruction(type)
+                    => (value.Syntax.GetLocation(), type.Name),
+                IInvocationOperation invocation when IsFixedWait(invocation.TargetMethod)
+                    => (operation.Syntax.GetLocation(),
+                        $"{invocation.TargetMethod.ContainingType.Name}.{invocation.TargetMethod.Name}"),
+                _ => null,
+            };
+            if (wait is null)
+            {
+                return false;
+            }
+
+            if (!IsPollingInterval(operation))
+            {
+                Found.Add(wait.Value);
+            }
+
+            return true;
+        }
+
+        private bool IsFixedWaitInstruction(ITypeSymbol type)
+        {
+            return SymbolEqualityComparer.Default.Equals(type, _waitForSeconds)
+                   || SymbolEqualityComparer.Default.Equals(type, _waitForSecondsRealtime);
+        }
+
+        // The name is compared first: it rejects almost every invocation before the symbol comparison.
         private bool IsFixedWait(IMethodSymbol method)
         {
             foreach (var (type, name) in _methods)
             {
-                if (SymbolEqualityComparer.Default.Equals(method.ContainingType, type)
-                    && string.Equals(method.Name, name, StringComparison.Ordinal))
+                if (string.Equals(method.Name, name, StringComparison.Ordinal)
+                    && SymbolEqualityComparer.Default.Equals(method.ContainingType, type))
                 {
                     return true;
                 }
@@ -129,86 +135,25 @@ public sealed class FixedTimeWaitAnalyzer : DiagnosticAnalyzer
             return false;
         }
 
-        public void AnalyzeMethod(SymbolAnalysisContext context)
+        // A fixed wait inside a while or do loop is the polling interval of a wait for a condition, which UTF4001,
+        // UTF4002, and UTF4003 cover. The ancestor chain is checked instead of tracking loop nesting in the walk, so
+        // that the shared walker needs no loop state; the chain stops at the body being walked, so a lambda or local
+        // function declared in the loop body is not excluded.
+        private static bool IsPollingInterval(IOperation operation)
         {
-            var method = (IMethodSymbol)context.Symbol;
-            if (!_testMethods.IsTestMethod(method) && !UnityHookMethodAnalysis.HasAnyAttribute(method, _hooks))
+            for (var parent = operation.Parent; parent is not null; parent = parent.Parent)
             {
-                return;
-            }
-
-            if (OperationAnalysis.MethodBody(_compilation, method, context.CancellationToken) is not { } body)
-            {
-                return;
-            }
-
-            var walker = new Walker(this, context.CancellationToken);
-            walker.Visit(body, 0);
-            foreach (var (location, name) in walker.Found)
-            {
-                if (_reported.TryAdd(location, true))
+                switch (parent)
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(Rule, location, name));
-                }
-            }
-        }
-
-        private sealed class Walker : DepthBoundedWalker
-        {
-            private readonly CompilationAnalysis _analysis;
-
-            public Walker(CompilationAnalysis analysis, CancellationToken cancellationToken)
-                : base(analysis._compilation, cancellationToken)
-            {
-                _analysis = analysis;
-            }
-
-            // A wait found in a callee stays reported at the wait, as in UTF4003, because the fix is applied there.
-            protected override bool TryMatch(IOperation operation)
-            {
-                switch (operation)
-                {
-                    case IReturnOperation { Kind: OperationKind.YieldReturn, ReturnedValue: { } returned }
-                        when OperationAnalysis.WithoutImplicitConversions(returned) is { Type: INamedTypeSymbol type } value
-                             && _analysis._yieldInstructions.Contains(type):
-                        if (!IsPollingInterval(operation))
-                        {
-                            Found.Add((value.Syntax.GetLocation(), type.Name));
-                        }
-
+                    case IWhileLoopOperation:
                         return true;
-                    case IInvocationOperation { TargetMethod: { } method } when _analysis.IsFixedWait(method):
-                        if (!IsPollingInterval(operation))
-                        {
-                            Found.Add((operation.Syntax.GetLocation(), $"{method.ContainingType.Name}.{method.Name}"));
-                        }
-
-                        return true;
-                    default:
+                    case IAnonymousFunctionOperation:
+                    case ILocalFunctionOperation:
                         return false;
                 }
             }
 
-            // A fixed wait inside a while or do loop is the polling interval of a wait for a condition, which UTF4001,
-            // UTF4002, and UTF4003 cover. The ancestor chain is checked instead of tracking loop nesting in the walk,
-            // so that the shared walker needs no loop state; the chain stops at the body being walked, so a lambda or
-            // local function declared in the loop body is not excluded.
-            private static bool IsPollingInterval(IOperation operation)
-            {
-                for (var parent = operation.Parent; parent is not null; parent = parent.Parent)
-                {
-                    switch (parent)
-                    {
-                        case IWhileLoopOperation:
-                            return true;
-                        case IAnonymousFunctionOperation:
-                        case ILocalFunctionOperation:
-                            return false;
-                    }
-                }
-
-                return false;
-            }
+            return false;
         }
     }
 }

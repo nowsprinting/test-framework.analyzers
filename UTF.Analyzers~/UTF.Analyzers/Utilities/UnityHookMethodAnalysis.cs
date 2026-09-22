@@ -1,13 +1,11 @@
+using System;
 using Microsoft.CodeAnalysis;
 
 namespace UTF.Analyzers.Utilities;
 
 internal static class UnityHookMethodAnalysis
 {
-    /// <summary>
-    /// Metadata names of every NUnit and UTF setup and teardown attribute.
-    /// </summary>
-    public static readonly string[] AllHookAttributeNames =
+    private static readonly string[] AllHookAttributeNames =
     {
         "NUnit.Framework.SetUpAttribute",
         "NUnit.Framework.TearDownAttribute",
@@ -20,17 +18,12 @@ internal static class UnityHookMethodAnalysis
     };
 
     /// <summary>
-    /// Resolves <see cref="AllHookAttributeNames"/> in <paramref name="compilation"/>; an absent attribute is null.
+    /// Resolves every NUnit and UTF setup and teardown attribute in <paramref name="compilation"/>; an absent
+    /// attribute is null.
     /// </summary>
     public static INamedTypeSymbol?[] ResolveAllHookAttributes(Compilation compilation)
     {
-        var hooks = new INamedTypeSymbol?[AllHookAttributeNames.Length];
-        for (var i = 0; i < hooks.Length; i++)
-        {
-            hooks[i] = compilation.GetTypeByMetadataName(AllHookAttributeNames[i]);
-        }
-
-        return hooks;
+        return Array.ConvertAll(AllHookAttributeNames, compilation.GetTypeByMetadataName);
     }
 
     /// <summary>

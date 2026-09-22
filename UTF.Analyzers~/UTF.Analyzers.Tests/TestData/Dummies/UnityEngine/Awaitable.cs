@@ -10,7 +10,8 @@ namespace UnityEngine
 {
     public class Awaitable
     {
-        public static Awaitable WaitForSecondsAsync(float seconds, CancellationToken cancellationToken = default(CancellationToken))
+        public static Awaitable WaitForSecondsAsync(float seconds,
+            CancellationToken cancellationToken = default(CancellationToken))
         {
             throw new NotImplementedException();
         }

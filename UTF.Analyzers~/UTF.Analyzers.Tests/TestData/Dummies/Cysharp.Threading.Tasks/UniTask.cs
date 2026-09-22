@@ -21,39 +21,49 @@ namespace Cysharp.Threading.Tasks
             throw new NotImplementedException();
         }
 
-        public static UniTask DelayFrame(int delayFrameCount, PlayerLoopTiming delayTiming = PlayerLoopTiming.Update, CancellationToken cancellationToken = default(CancellationToken), bool cancelImmediately = false)
+        public static UniTask DelayFrame(int delayFrameCount, PlayerLoopTiming delayTiming = PlayerLoopTiming.Update,
+            CancellationToken cancellationToken = default(CancellationToken), bool cancelImmediately = false)
         {
             throw new NotImplementedException();
         }
 
-        public static UniTask Delay(int millisecondsDelay, bool ignoreTimeScale = false, PlayerLoopTiming delayTiming = PlayerLoopTiming.Update, CancellationToken cancellationToken = default(CancellationToken), bool cancelImmediately = false)
+        public static UniTask Delay(int millisecondsDelay, bool ignoreTimeScale = false,
+            PlayerLoopTiming delayTiming = PlayerLoopTiming.Update,
+            CancellationToken cancellationToken = default(CancellationToken), bool cancelImmediately = false)
         {
             throw new NotImplementedException();
         }
 
-        public static UniTask WaitForSeconds(float duration, bool ignoreTimeScale = false, PlayerLoopTiming delayTiming = PlayerLoopTiming.Update, CancellationToken cancellationToken = default(CancellationToken), bool cancelImmediately = false)
+        public static UniTask WaitForSeconds(float duration, bool ignoreTimeScale = false,
+            PlayerLoopTiming delayTiming = PlayerLoopTiming.Update,
+            CancellationToken cancellationToken = default(CancellationToken), bool cancelImmediately = false)
         {
             throw new NotImplementedException();
         }
 
-        public static UniTask WaitUntil(Func<bool> predicate, PlayerLoopTiming timing = PlayerLoopTiming.Update, CancellationToken cancellationToken = default(CancellationToken), bool cancelImmediately = false)
+        public static UniTask WaitUntil(Func<bool> predicate, PlayerLoopTiming timing = PlayerLoopTiming.Update,
+            CancellationToken cancellationToken = default(CancellationToken), bool cancelImmediately = false)
         {
             throw new NotImplementedException();
         }
 
 
-
-        public static UniTask WaitWhile<T>(T state, Func<T, bool> predicate, PlayerLoopTiming timing = PlayerLoopTiming.Update, CancellationToken cancellationToken = default(CancellationToken), bool cancelImmediately = false)
+        public static UniTask WaitWhile<T>(T state, Func<T, bool> predicate,
+            PlayerLoopTiming timing = PlayerLoopTiming.Update,
+            CancellationToken cancellationToken = default(CancellationToken), bool cancelImmediately = false)
         {
             throw new NotImplementedException();
         }
 
-        public static UniTask WaitUntilCanceled(CancellationToken cancellationToken, PlayerLoopTiming timing = PlayerLoopTiming.Update, bool completeImmediately = false)
+        public static UniTask WaitUntilCanceled(CancellationToken cancellationToken,
+            PlayerLoopTiming timing = PlayerLoopTiming.Update, bool completeImmediately = false)
         {
             throw new NotImplementedException();
         }
 
-        public static UniTask<U> WaitUntilValueChanged<T, U>(T target, Func<T, U> monitorFunction, PlayerLoopTiming monitorTiming = PlayerLoopTiming.Update, IEqualityComparer<U>? equalityComparer = null, CancellationToken cancellationToken = default(CancellationToken), bool cancelImmediately = false)
+        public static UniTask<U> WaitUntilValueChanged<T, U>(T target, Func<T, U> monitorFunction,
+            PlayerLoopTiming monitorTiming = PlayerLoopTiming.Update, IEqualityComparer<U>? equalityComparer = null,
+            CancellationToken cancellationToken = default(CancellationToken), bool cancelImmediately = false)
             where T : class
         {
             throw new NotImplementedException();
