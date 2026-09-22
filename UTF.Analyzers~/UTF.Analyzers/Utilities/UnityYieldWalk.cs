@@ -65,8 +65,13 @@ internal sealed class UnityYieldWalk
     /// </summary>
     public bool IsConvertibleCoroutine(IMethodSymbol method, CancellationToken cancellationToken)
     {
-        return SymbolEqualityComparer.Default.Equals(method.ReturnType, _enumerator)
-               && YieldsOnlyUnityInstructions(method, method.ContainingType, 0, cancellationToken);
+        return IsCoroutine(method) && YieldsOnlyUnityInstructions(method, method.ContainingType, 0, cancellationToken);
+    }
+
+    /// <summary>Whether <paramref name="method"/> returns the non-generic IEnumerator; one comparison, no body walk.</summary>
+    public bool IsCoroutine(IMethodSymbol method)
+    {
+        return SymbolEqualityComparer.Default.Equals(method.ReturnType, _enumerator);
     }
 
     // The return type is included in the span because it is what the fix changes, together with the name.
