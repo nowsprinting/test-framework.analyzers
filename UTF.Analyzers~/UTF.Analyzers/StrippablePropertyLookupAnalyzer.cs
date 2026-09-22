@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -35,58 +36,58 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
     /// taken from its IL. Kept as metadata names rather than read from the referenced nunit.framework.dll: Roslyn exposes
     /// no method bodies of metadata references, and in tests NUnit is a dummy source.
     /// </summary>
-    private static readonly string[] NUnitReferencedGetters =
+    private static readonly (string Type, string[] Properties)[] NUnitReferencedGetters =
     {
-        "System.AggregateException|InnerExceptions",
-        "System.AppDomain|CurrentDomain,FriendlyName",
-        "System.Array|Length,Rank",
-        "System.Collections.DictionaryEntry|Key,Value",
-        "System.Collections.Generic.Dictionary`2|Count,Keys",
-        "System.Collections.Generic.ICollection`1|Count",
-        "System.Collections.Generic.IDictionary`2|Keys",
-        "System.Collections.Generic.IEnumerator`1|Current",
-        "System.Collections.Generic.KeyValuePair`2|Key,Value",
-        "System.Collections.Generic.List`1|Count",
-        "System.Collections.Generic.Stack`1|Count",
-        "System.Collections.ICollection|Count",
-        "System.Collections.IDictionary|Keys,Values",
-        "System.Collections.IEnumerator|Current",
-        "System.Console|Error,Out",
-        "System.DateTime|Now,UtcNow",
-        "System.DateTimeOffset|Offset",
-        "System.Delegate|Method",
-        "System.Diagnostics.Debugger|IsAttached",
-        "System.Diagnostics.Process|Id",
-        "System.Environment|CurrentDirectory,Is64BitOperatingSystem,MachineName,NewLine,OSVersion,UserDomainName,UserName,Version",
-        "System.Exception|InnerException,Message,StackTrace",
-        "System.Globalization.CultureInfo|CurrentCulture,CurrentUICulture,InvariantCulture,Name,NumberFormat,TwoLetterISOLanguageName",
-        "System.Globalization.NumberFormatInfo|InvariantInfo",
-        "System.IO.BinaryReader|BaseStream",
-        "System.IO.FileSystemInfo|Attributes,CreationTime,Exists,FullName,LastAccessTime",
-        "System.IO.Stream|CanRead,CanSeek,Length,Position",
-        "System.IO.TextWriter|Encoding",
-        "System.IntPtr|Size",
-        "System.Lazy`1|Value",
-        "System.Nullable`1|HasValue,Value",
-        "System.OperatingSystem|Platform,Version",
-        "System.Reflection.Assembly|CodeBase,FullName,Location",
-        "System.Reflection.AssemblyName|Version",
-        "System.Reflection.FieldInfo|FieldType,IsStatic",
-        "System.Reflection.MemberInfo|DeclaringType,Name",
-        "System.Reflection.MethodBase|ContainsGenericParameters,IsAbstract,IsFamily,IsGenericMethod,IsGenericMethodDefinition,IsPublic,IsStatic",
-        "System.Reflection.MethodInfo|ReturnType",
-        "System.Reflection.ParameterInfo|IsOptional,Member,ParameterType",
-        "System.Reflection.PropertyInfo|PropertyType",
-        "System.String|Length",
-        "System.Text.Encoding|Default",
-        "System.Text.RegularExpressions.Capture|Value",
-        "System.Text.StringBuilder|Length",
-        "System.Threading.CountdownEvent|CurrentCount",
-        "System.Threading.Thread|CurrentPrincipal,CurrentThread,ManagedThreadId,ThreadState",
-        "System.TimeSpan|TotalMilliseconds,TotalSeconds",
-        "System.Type|Assembly,BaseType,ContainsGenericParameters,FullName,GenericParameterPosition,HasElementType,IsAbstract,IsArray,IsClass,IsEnum,IsGenericParameter,IsGenericType,IsGenericTypeDefinition,IsSealed,Namespace",
-        "System.Version|Build,Major,Minor,Revision",
-        "System.Xml.XmlNode|Attributes,ChildNodes,FirstChild,InnerText,Name,NodeType,Value",
+        ("System.AggregateException", new[] { "InnerExceptions" }),
+        ("System.AppDomain", new[] { "CurrentDomain", "FriendlyName" }),
+        ("System.Array", new[] { "Length", "Rank" }),
+        ("System.Collections.DictionaryEntry", new[] { "Key", "Value" }),
+        ("System.Collections.Generic.Dictionary`2", new[] { "Count", "Keys" }),
+        ("System.Collections.Generic.ICollection`1", new[] { "Count" }),
+        ("System.Collections.Generic.IDictionary`2", new[] { "Keys" }),
+        ("System.Collections.Generic.IEnumerator`1", new[] { "Current" }),
+        ("System.Collections.Generic.KeyValuePair`2", new[] { "Key", "Value" }),
+        ("System.Collections.Generic.List`1", new[] { "Count" }),
+        ("System.Collections.Generic.Stack`1", new[] { "Count" }),
+        ("System.Collections.ICollection", new[] { "Count" }),
+        ("System.Collections.IDictionary", new[] { "Keys", "Values" }),
+        ("System.Collections.IEnumerator", new[] { "Current" }),
+        ("System.Console", new[] { "Error", "Out" }),
+        ("System.DateTime", new[] { "Now", "UtcNow" }),
+        ("System.DateTimeOffset", new[] { "Offset" }),
+        ("System.Delegate", new[] { "Method" }),
+        ("System.Diagnostics.Debugger", new[] { "IsAttached" }),
+        ("System.Diagnostics.Process", new[] { "Id" }),
+        ("System.Environment", new[] { "CurrentDirectory", "Is64BitOperatingSystem", "MachineName", "NewLine", "OSVersion", "UserDomainName", "UserName", "Version" }),
+        ("System.Exception", new[] { "InnerException", "Message", "StackTrace" }),
+        ("System.Globalization.CultureInfo", new[] { "CurrentCulture", "CurrentUICulture", "InvariantCulture", "Name", "NumberFormat", "TwoLetterISOLanguageName" }),
+        ("System.Globalization.NumberFormatInfo", new[] { "InvariantInfo" }),
+        ("System.IO.BinaryReader", new[] { "BaseStream" }),
+        ("System.IO.FileSystemInfo", new[] { "Attributes", "CreationTime", "Exists", "FullName", "LastAccessTime" }),
+        ("System.IO.Stream", new[] { "CanRead", "CanSeek", "Length", "Position" }),
+        ("System.IO.TextWriter", new[] { "Encoding" }),
+        ("System.IntPtr", new[] { "Size" }),
+        ("System.Lazy`1", new[] { "Value" }),
+        ("System.Nullable`1", new[] { "HasValue", "Value" }),
+        ("System.OperatingSystem", new[] { "Platform", "Version" }),
+        ("System.Reflection.Assembly", new[] { "CodeBase", "FullName", "Location" }),
+        ("System.Reflection.AssemblyName", new[] { "Version" }),
+        ("System.Reflection.FieldInfo", new[] { "FieldType", "IsStatic" }),
+        ("System.Reflection.MemberInfo", new[] { "DeclaringType", "Name" }),
+        ("System.Reflection.MethodBase", new[] { "ContainsGenericParameters", "IsAbstract", "IsFamily", "IsGenericMethod", "IsGenericMethodDefinition", "IsPublic", "IsStatic" }),
+        ("System.Reflection.MethodInfo", new[] { "ReturnType" }),
+        ("System.Reflection.ParameterInfo", new[] { "IsOptional", "Member", "ParameterType" }),
+        ("System.Reflection.PropertyInfo", new[] { "PropertyType" }),
+        ("System.String", new[] { "Length" }),
+        ("System.Text.Encoding", new[] { "Default" }),
+        ("System.Text.RegularExpressions.Capture", new[] { "Value" }),
+        ("System.Text.StringBuilder", new[] { "Length" }),
+        ("System.Threading.CountdownEvent", new[] { "CurrentCount" }),
+        ("System.Threading.Thread", new[] { "CurrentPrincipal", "CurrentThread", "ManagedThreadId", "ThreadState" }),
+        ("System.TimeSpan", new[] { "TotalMilliseconds", "TotalSeconds" }),
+        ("System.Type", new[] { "Assembly", "BaseType", "ContainsGenericParameters", "FullName", "GenericParameterPosition", "HasElementType", "IsAbstract", "IsArray", "IsClass", "IsEnum", "IsGenericParameter", "IsGenericType", "IsGenericTypeDefinition", "IsSealed", "Namespace" }),
+        ("System.Version", new[] { "Build", "Major", "Minor", "Revision" }),
+        ("System.Xml.XmlNode", new[] { "Attributes", "ChildNodes", "FirstChild", "InnerText", "Name", "NodeType", "Value" }),
     };
 
     private static readonly (string Property, string ExceptionType)[] ThrowsExceptionProperties =
@@ -118,7 +119,10 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         context.RegisterOperationAction(operationContext =>
         {
             operationContext.CancellationToken.ThrowIfCancellationRequested();
-            analysis.Analyze((IInvocationOperation)operationContext.Operation, operationContext.ReportDiagnostic);
+            // Passing operationContext.ReportDiagnostic as a delegate boxes the context struct for every invocation,
+            // nearly all of which the first lookup rejects. The context is copied by value instead: an 'in' parameter
+            // makes defensive copies of this non-readonly struct on every member access.
+            analysis.Analyze(operationContext);
         }, OperationKind.Invocation);
     }
 
@@ -136,7 +140,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         private readonly ImmutableHashSet<ISymbol> _by;
         private readonly ImmutableHashSet<ISymbol> _listMap;
         private readonly ImmutableHashSet<ISymbol> _listMapperProperty;
-        private readonly ImmutableHashSet<ISymbol> _nunitReferenced;
+        private readonly Lazy<ImmutableHashSet<ISymbol>> _nunitReferenced;
 
         private Analysis(Compilation compilation, INamedTypeSymbol assert, INamedTypeSymbol has,
             INamedTypeSymbol constraintExpression, INamedTypeSymbol constraint, INamedTypeSymbol resolveConstraint)
@@ -177,12 +181,13 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
             _by = Members(new[] { ordered }, "By");
             _listMap = Members(new[] { list }, "Map");
             _listMapperProperty = Members(new[] { listMapper }, "Property");
-            _nunitReferenced = NUnitReferencedGetters
-                .Select(line => line.Split('|'))
-                .SelectMany(parts => compilation.GetTypeByMetadataName(parts[0]) is { } type
-                    ? parts[1].Split(',').SelectMany(name => type.GetMembers(name).OfType<IPropertySymbol>())
+            // Resolving about fifty types at every compilation start is wasted for the many compilations that contain
+            // no property step, so the set is built on the first property found.
+            _nunitReferenced = new Lazy<ImmutableHashSet<ISymbol>>(() => NUnitReferencedGetters
+                .SelectMany(entry => compilation.GetTypeByMetadataName(entry.Type) is { } type
+                    ? entry.Properties.SelectMany(name => type.GetMembers(name).OfType<IPropertySymbol>())
                     : Enumerable.Empty<IPropertySymbol>())
-                .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default);
+                .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default));
         }
 
         public static Analysis? TryCreate(Compilation compilation)
@@ -199,12 +204,13 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
                 : new Analysis(compilation, assert, has, constraintExpression, constraint, resolveConstraint);
         }
 
-        public void Analyze(IInvocationOperation invocation, System.Action<Diagnostic> report)
+        public void Analyze(OperationAnalysisContext context)
         {
+            var invocation = (IInvocationOperation)context.Operation;
             var method = invocation.TargetMethod.OriginalDefinition;
             if (_that.Contains(method))
             {
-                AnalyzeThat(invocation, report);
+                AnalyzeThat(invocation, context);
             }
             else if (_listMapperProperty.Contains(method) &&
                      invocation.Instance is IInvocationOperation map &&
@@ -212,7 +218,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
                      map.Arguments.Length == 1)
             {
                 var collection = OperationAnalysis.WithoutImplicitConversions(map.Arguments[0].Value).Type;
-                ReportIfStrippable(invocation, ElementType(collection), ConstantName(invocation), true, report);
+                ReportIfStrippable(invocation, ElementType(collection), ConstantName(invocation), true, context);
             }
         }
 
@@ -221,7 +227,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         /// <c>operand</c> is the type an And/Or/With after a resolved constraint returns to: the actual value, the element
         /// after a collection operator, or the type named by a type constraint.
         /// </summary>
-        private void AnalyzeThat(IInvocationOperation invocation, System.Action<Diagnostic> report)
+        private void AnalyzeThat(IInvocationOperation invocation, OperationAnalysisContext context)
         {
             IArgumentOperation? expression = null;
             foreach (var argument in invocation.Arguments)
@@ -257,7 +263,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
 
                 if (_propertySteps.TryGetValue(member, out var name))
                 {
-                    target = ReportIfStrippable(step, target, name ?? ConstantName(step), true, report)?.Type;
+                    target = ReportIfStrippable(step, target, name ?? ConstantName(step), true, context)?.Type;
                 }
                 else if (_collectionOperators.Contains(member))
                 {
@@ -277,7 +283,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
                 }
                 else if (_by.Contains(member))
                 {
-                    ReportIfStrippable(step, ElementType(target), ConstantName(step), false, report);
+                    ReportIfStrippable(step, ElementType(target), ConstantName(step), false, context);
                 }
             }
         }
@@ -287,12 +293,12 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         /// or null when the property cannot be resolved at compile time.
         /// </summary>
         private IPropertySymbol? ReportIfStrippable(IOperation step, ITypeSymbol? target, string? name,
-            bool includeNonPublic, System.Action<Diagnostic> report)
+            bool includeNonPublic, OperationAnalysisContext context)
         {
             var property = FindProperty(target, name, includeNonPublic);
             if (property is not null && !IsReferencedByNUnit(property))
             {
-                report(Diagnostic.Create(Rule, OperationAnalysis.MemberNameLocation(step.Syntax),
+                context.ReportDiagnostic(Diagnostic.Create(Rule, OperationAnalysis.MemberNameLocation(step.Syntax),
                     $"{property.ContainingType.Name}.{property.Name}"));
             }
 
@@ -333,7 +339,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         {
             for (var p = property; p is not null; p = p.OverriddenProperty)
             {
-                if (_nunitReferenced.Contains(p.OriginalDefinition))
+                if (_nunitReferenced.Value.Contains(p.OriginalDefinition))
                 {
                     return true;
                 }
@@ -342,7 +348,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
             var type = property.ContainingType;
             return type.AllInterfaces
                 .SelectMany(i => i.GetMembers(property.Name).OfType<IPropertySymbol>())
-                .Any(member => _nunitReferenced.Contains(member.OriginalDefinition) &&
+                .Any(member => _nunitReferenced.Value.Contains(member.OriginalDefinition) &&
                                SymbolEqualityComparer.Default.Equals(type.FindImplementationForInterfaceMember(member),
                                    property));
         }
