@@ -62,18 +62,24 @@ public sealed class HiddenTestComponentAnalyzer : DiagnosticAnalyzer
                 || symbol.IsAbstract
                 || symbol.IsGenericType
                 || symbol.ContainingType is not null
-                || !ActionAttributeAnalysis.DerivesFrom(symbol, monoBehaviour)
-                || IsHidden(symbol, addComponentMenu))
+                || !ActionAttributeAnalysis.DerivesFrom(symbol, monoBehaviour))
             {
                 return;
             }
 
+            // The attribute check comes after the path and file-name checks: GetAttributes binds the attribute
+            // constructors, and in an assembly that is not a test assembly no class ever needs it.
             foreach (var reference in symbol.DeclaringSyntaxReferences)
             {
                 var path = reference.SyntaxTree.FilePath;
                 if ((assemblyIsTests || IsUnderTestsDirectory(path))
                     && IsResolvedAsComponent(reference, symbol.Name, symbolContext.CancellationToken))
                 {
+                    if (IsHidden(symbol, addComponentMenu))
+                    {
+                        return;
+                    }
+
                     var declaration = (ClassDeclarationSyntax)reference.GetSyntax(symbolContext.CancellationToken);
                     symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, declaration.Identifier.GetLocation(),
                         symbol.Name));
