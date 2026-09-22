@@ -79,6 +79,7 @@ Rules about code that works but is not recommended.
 | [UTF4004](Documentation~/rules/UTF4004.md) | Waiting for a fixed time in test, setup, and teardown methods is not recommended | ⚠️ |
 | [UTF4005](Documentation~/rules/UTF4005.md) | MonoBehaviour classes in test assemblies should be hidden from the Add Component menu | ⚠️ |
 | [UTF4006](Documentation~/rules/UTF4006.md) | Async Task test methods are recommended over coroutine-style test methods with the UnityTest attribute | ⚠️ |
+| [UTF4007](Documentation~/rules/UTF4007.md) | Async Task SetUp and TearDown methods are recommended over coroutine-style methods with the UnitySetUp and UnityTearDown attributes | ⚠️ |
 
 ### Extensions (UTF5xxx)
 
