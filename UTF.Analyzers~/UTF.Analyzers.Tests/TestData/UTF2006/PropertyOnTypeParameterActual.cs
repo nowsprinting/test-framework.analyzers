@@ -5,12 +5,12 @@ using NUnit.Framework;
 
 namespace UTF.Analyzers.Tests.TestData.UTF2006
 {
-    public class TypeParameterActual
+    public class PropertyOnTypeParameterActual
     {
         [Test]
         public void Test<T>(T actual)
         {
-            Assert.That(actual, Has.Property("Length"));
+            Assert.That(actual, Has.Property("Length")); // UTF2006
         }
     }
 }

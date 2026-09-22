@@ -10,7 +10,7 @@ namespace UTF.Analyzers.Tests.TestData.UTF2006
         [Test]
         public void Test()
         {
-            Assert.That(new FileInfo("a.bin"), Has.Property("Length").GreaterThan(0).And.Property("IsReadOnly").EqualTo(false)); // UTF2006
+            Assert.That(new FileInfo("a.bin"), Has.Property("Directory").Not.EqualTo(null!).And.Length.GreaterThan(0)); // UTF2006
         }
     }
 }

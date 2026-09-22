@@ -5,13 +5,12 @@ using NUnit.Framework;
 
 namespace UTF.Analyzers.Tests.TestData.UTF2006
 {
-    public class NonConstantName
+    public class MessageByName
     {
         [Test]
         public void Test()
         {
-            var name = "Length";
-            Assert.That(new FileInfo("a.bin"), Has.Property(name));
+            Assert.That(new InvalidOperationException("boom"), Has.Property("Message").EqualTo("boom")); // UTF2006
         }
     }
 }

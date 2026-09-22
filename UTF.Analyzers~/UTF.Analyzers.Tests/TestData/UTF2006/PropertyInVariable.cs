@@ -5,13 +5,13 @@ using NUnit.Framework;
 
 namespace UTF.Analyzers.Tests.TestData.UTF2006
 {
-    public class IsTypeOfAndProperty
+    public class PropertyInVariable
     {
         [Test]
         public void Test()
         {
-            object actual = new FileInfo("a.bin");
-            Assert.That(actual, Is.TypeOf<FileInfo>().And.Length.GreaterThan(0)); // UTF2006
+            var constraint = Has.Property("Length").GreaterThan(128); // UTF2006
+            Assert.That(new FileInfo("a.bin"), constraint);
         }
     }
 }

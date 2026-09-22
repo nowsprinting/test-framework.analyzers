@@ -17,7 +17,7 @@ namespace UTF.Analyzers.Tests.TestData.UTF2006
         {
             FileSystemInfo info = new FileInfo("a.bin");
             Assert.That(info, Has.Length.GreaterThan(128));
-            Assert.That(() => Load(), Throws.Exception.With.Property("ParamName"));
+            Assert.That(() => Load(), Throws.Exception.With.Property("ParamName")); // UTF2006
         }
     }
 }
