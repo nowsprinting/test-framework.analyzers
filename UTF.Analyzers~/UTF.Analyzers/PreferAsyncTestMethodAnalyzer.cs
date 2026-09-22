@@ -47,7 +47,10 @@ public sealed class PreferAsyncTestMethodAnalyzer : DiagnosticAnalyzer
         context.RegisterSymbolAction(symbolContext =>
         {
             var method = (IMethodSymbol)symbolContext.Symbol;
-            if (testMethods.IsTestMethod(method)
+            // Return type first: it rejects almost every method with one comparison, whereas the test-attribute
+            // check walks the interfaces of every attribute on the method.
+            if (walk.IsCoroutine(method)
+                && testMethods.IsTestMethod(method)
                 && walk.IsConvertibleCoroutine(method, symbolContext.CancellationToken))
             {
                 symbolContext.ReportDiagnostic(Diagnostic.Create(Rule,
