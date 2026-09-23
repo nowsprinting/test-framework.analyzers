@@ -17,6 +17,10 @@ internal sealed class WaitAnalysis
 
     private static readonly string[] UniTaskTimeoutNames = { "Timeout", "TimeoutWithoutException" };
 
+    // CancellationTokenSource.CancelAfter and UniTask's CancellationTokenSourceExtensions.CancelAfterSlim. Matched by
+    // name and operand type rather than by containing type, so that no UniTask type lookup is needed.
+    private static readonly string[] CancelAfterNames = { "CancelAfter", "CancelAfterSlim" };
+
     // Types whose members are read to get the current time or frame. A loop whose condition reads one of them ends
     // when the deadline passes. The whole type is matched rather than each clock member (Time.time,
     // DateTime.UtcNow, Stopwatch.ElapsedMilliseconds, ...): the non-clock members (Time.timeScale, DateTime.Year)
@@ -33,6 +37,7 @@ internal sealed class WaitAnalysis
     private readonly INamedTypeSymbol? _uniTask;
     private readonly INamedTypeSymbol? _uniTaskExtensions;
     private readonly INamedTypeSymbol? _timeSpan;
+    private readonly INamedTypeSymbol? _cancellationTokenSource;
     private readonly HashSet<INamedTypeSymbol> _clockTypes = new(SymbolEqualityComparer.Default);
 
     public WaitAnalysis(Compilation compilation)
@@ -43,6 +48,7 @@ internal sealed class WaitAnalysis
         _uniTask = compilation.GetTypeByMetadataName("Cysharp.Threading.Tasks.UniTask");
         _uniTaskExtensions = compilation.GetTypeByMetadataName("Cysharp.Threading.Tasks.UniTaskExtensions");
         _timeSpan = compilation.GetTypeByMetadataName("System.TimeSpan");
+        _cancellationTokenSource = compilation.GetTypeByMetadataName("System.Threading.CancellationTokenSource");
         foreach (var name in ClockTypeNames)
         {
             if (compilation.GetTypeByMetadataName(name) is { } clock)
@@ -158,6 +164,101 @@ internal sealed class WaitAnalysis
         return false;
     }
 
+    // A wait is canceled after a delay when it references a CancellationTokenSource that the enclosing body
+    // schedules to cancel, with CancelAfter(...), CancelAfterSlim(...), or a constructor that takes a delay. Where
+    // the schedule is placed relative to the wait and how the token reaches the wait are not checked, as with the
+    // deadline loop: a source referenced in the wait and scheduled in the same body is taken as bounding it. A source
+    // scheduled in another method (a field set up in [SetUp]) is not seen, and the wait is reported.
+    private bool IsCanceledAfterDelay(IOperation wait)
+    {
+        if (_cancellationTokenSource is null)
+        {
+            return false;
+        }
+
+        var sources = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+        CollectVariables(wait, sources);
+        sources.RemoveWhere(variable => !IsCancellationTokenSource(variable switch
+        {
+            ILocalSymbol local => local.Type,
+            IFieldSymbol field => field.Type,
+            _ => null,
+        }));
+        if (sources.Count == 0)
+        {
+            return false;
+        }
+
+        var root = wait;
+        while (root.Parent is { } parent)
+        {
+            root = parent;
+        }
+
+        return SchedulesCancel(root, sources);
+    }
+
+    private bool SchedulesCancel(IOperation operation, HashSet<ISymbol> sources)
+    {
+        switch (operation)
+        {
+            // The extension call has the source in Instance when bound in reduced form, and in the first argument
+            // when called as CancellationTokenSourceExtensions.CancelAfterSlim(cts, ...).
+            case IInvocationOperation invocation when Array.IndexOf(CancelAfterNames, invocation.TargetMethod.Name) >= 0:
+                var source = invocation.Instance
+                             ?? (invocation.Arguments.Length > 0 ? invocation.Arguments[0].Value : null);
+                if (source is not null
+                    && ReferencedVariable(OperationAnalysis.WithoutImplicitConversions(source)) is { } scheduled
+                    && sources.Contains(scheduled))
+                {
+                    return true;
+                }
+
+                break;
+            case IVariableDeclaratorOperation { Initializer.Value: { } value } declarator
+                when IsCreatedWithDelay(value) && sources.Contains(declarator.Symbol):
+                return true;
+            case ISimpleAssignmentOperation assignment
+                when IsCreatedWithDelay(assignment.Value)
+                     && ReferencedVariable(assignment.Target) is { } assigned
+                     && sources.Contains(assigned):
+                return true;
+        }
+
+        foreach (var child in operation.ChildOperations)
+        {
+            if (SchedulesCancel(child, sources))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // The parameter types are not checked: every CancellationTokenSource constructor with parameters takes a delay.
+    private bool IsCreatedWithDelay(IOperation value)
+    {
+        return OperationAnalysis.WithoutImplicitConversions(value) is IObjectCreationOperation creation
+               && IsCancellationTokenSource(creation.Type)
+               && creation.Arguments.Length > 0;
+    }
+
+    private bool IsCancellationTokenSource(ITypeSymbol? type)
+    {
+        return SymbolEqualityComparer.Default.Equals(type, _cancellationTokenSource);
+    }
+
+    private static ISymbol? ReferencedVariable(IOperation operation)
+    {
+        return operation switch
+        {
+            ILocalReferenceOperation local => local.Local,
+            IFieldReferenceOperation field => field.Field,
+            _ => null,
+        };
+    }
+
     private bool ReadsClock(IOperation condition)
     {
         var member = condition switch
@@ -217,12 +318,13 @@ internal sealed class WaitAnalysis
         {
             switch (operation)
             {
-                case IWhileLoopOperation loop when YieldsOrAwaits(loop.Body) && !_analysis.IsDeadline(loop):
+                case IWhileLoopOperation loop when YieldsOrAwaits(loop.Body) && !_analysis.IsDeadline(loop)
+                                                   && !_analysis.IsCanceledAfterDelay(loop):
                     Found.Add((OperationAnalysis.LoopKeyword(loop), loop.ConditionIsTop ? "while" : "do"));
                     return true;
-                // A CancellationToken argument does not bound the wait: the test runner never cancels it.
+                // A CancellationToken argument alone does not bound the wait: the test runner never cancels it.
                 case IInvocationOperation invocation when _analysis.IsPredicateWait(invocation.TargetMethod):
-                    if (!_analysis.IsTimeoutReceiver(invocation))
+                    if (!_analysis.IsTimeoutReceiver(invocation) && !_analysis.IsCanceledAfterDelay(invocation))
                     {
                         Found.Add((operation.Syntax.GetLocation(),
                             $"{invocation.TargetMethod.ContainingType.Name}.{invocation.TargetMethod.Name}"));

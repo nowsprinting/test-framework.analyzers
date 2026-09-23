@@ -36,6 +36,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("UniTaskTimeoutChain")]
         [InlineData("ForLoopInUnitySetUp")]
         [InlineData("DeadlineLoopInUnitySetUp")]
+        [InlineData("CancelAfterLoopInAsyncSetUp")]
         [InlineData("UnitySetUpReturningTask")]
         [InlineData("LoopInTestMethod")]
         public async Task BoundedWaitOrNotRunAsCoroutine_NoDiagnostic(string fixture)
