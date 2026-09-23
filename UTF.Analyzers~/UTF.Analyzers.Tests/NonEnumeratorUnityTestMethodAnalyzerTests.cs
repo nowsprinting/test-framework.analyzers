@@ -7,16 +7,16 @@ namespace UTF.Analyzers.Tests
     public class NonEnumeratorUnityTestMethodAnalyzerTests
     {
         [Theory]
-        [InlineData("GenericEnumeratorOnUnityTest", 9, "IEnumerator<object>")]
-        [InlineData("EnumerableOnUnityTest", 9, "IEnumerable")]
-        [InlineData("AsyncTaskOnUnityTest", 9, "Task")]
-        [InlineData("VoidOnUnityTest", 8, "void")]
-        [InlineData("AsyncTaskOnTestAndUnityTest", 11, "Task")]
+        [InlineData("GenericEnumeratorOnUnityTest", 9, 16, "IEnumerator<object>")]
+        [InlineData("EnumerableOnUnityTest", 9, 16, "IEnumerable")]
+        [InlineData("AsyncTaskOnUnityTest", 9, 22, "Task")]
+        [InlineData("VoidOnUnityTest", 8, 16, "void")]
+        [InlineData("AsyncTaskOnTestAndUnityTest", 11, 22, "Task")]
         public async Task NonEnumeratorUnityTestMethod_ReportsAtReturnTypeWithItsName(string fixture, int line,
-            string returnType)
+            int column, string returnType)
         {
             await Verifier.VerifyAsync($"UTF1008/{fixture}.cs",
-                Verifier.Diagnostic().WithLocation(line, 16).WithArguments(returnType));
+                Verifier.Diagnostic().WithLocation(line, column).WithArguments(returnType));
         }
 
         [Theory]

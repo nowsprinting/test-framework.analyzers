@@ -8,7 +8,7 @@ namespace UTF.Analyzers.Utilities;
 
 /// <summary>
 /// Recognizes a method marked with one of an explicit set of attributes, for the return-type rules (UTF1002, UTF1006,
-/// UTF1007). TestMethodAnalysis (ITestBuilder-based) is not used because those rules commit to exactly the named
+/// UTF1007, UTF1008). TestMethodAnalysis (ITestBuilder-based) is not used because those rules commit to exactly the named
 /// attributes: UnityTestAttribute also implements ITestBuilder and has its own return-type validation.
 /// </summary>
 internal sealed class MethodAttributeAnalysis
