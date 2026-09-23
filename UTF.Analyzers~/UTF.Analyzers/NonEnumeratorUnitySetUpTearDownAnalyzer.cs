@@ -41,9 +41,8 @@ public sealed class NonEnumeratorUnitySetUpTearDownAnalyzer : DiagnosticAnalyzer
     {
         // UnityOneTimeSetUp/UnityOneTimeTearDown exist only in Unity Test Framework 1.5.0 or later; TryCreate skips
         // unresolved names so that UnitySetUp/UnityTearDown are still inspected with earlier versions.
-        var hookAttributes = MethodAttributeAnalysis.TryCreate(context.Compilation, ImmutableArray.Create(
-            "UnityEngine.TestTools.UnitySetUpAttribute", "UnityEngine.TestTools.UnityTearDownAttribute",
-            "UnityEngine.TestTools.UnityOneTimeSetUpAttribute", "UnityEngine.TestTools.UnityOneTimeTearDownAttribute"));
+        var hookAttributes = MethodAttributeAnalysis.TryCreate(context.Compilation,
+            MethodAttributeAnalysis.UnitySetUpTearDownAttributes);
         var enumerator = context.Compilation.GetTypeByMetadataName("System.Collections.IEnumerator");
         if (hookAttributes is null || enumerator is null)
         {

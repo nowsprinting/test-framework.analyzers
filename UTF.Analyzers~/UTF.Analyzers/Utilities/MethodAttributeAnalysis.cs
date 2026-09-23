@@ -8,8 +8,8 @@ namespace UTF.Analyzers.Utilities;
 
 /// <summary>
 /// Recognizes a method marked with one of an explicit set of attributes, for the return-type rules (UTF1002, UTF1006,
-/// UTF1007, UTF1008, UTF1009). TestMethodAnalysis (ITestBuilder-based) is not used because those rules commit to exactly the named
-/// attributes: UnityTestAttribute also implements ITestBuilder and has its own return-type validation.
+/// UTF1007, UTF1008, UTF1009). TestMethodAnalysis (ITestBuilder-based) is not used because those rules commit to
+/// exactly the named attributes: UnityTestAttribute also implements ITestBuilder and has its own return-type validation.
 /// </summary>
 internal sealed class MethodAttributeAnalysis
 {
@@ -19,6 +19,10 @@ internal sealed class MethodAttributeAnalysis
 
     public static readonly ImmutableArray<string> SetUpTearDownAttributes = ImmutableArray.Create(
         "NUnit.Framework.SetUpAttribute", "NUnit.Framework.TearDownAttribute");
+
+    public static readonly ImmutableArray<string> UnitySetUpTearDownAttributes = ImmutableArray.Create(
+        "UnityEngine.TestTools.UnitySetUpAttribute", "UnityEngine.TestTools.UnityTearDownAttribute",
+        "UnityEngine.TestTools.UnityOneTimeSetUpAttribute", "UnityEngine.TestTools.UnityOneTimeTearDownAttribute");
 
     private readonly ImmutableArray<INamedTypeSymbol> _attributes;
 
@@ -37,18 +41,18 @@ internal sealed class MethodAttributeAnalysis
         return attributes.IsEmpty ? null : new MethodAttributeAnalysis(attributes);
     }
 
-    /// <summary>
-    /// Plain loops rather than LINQ because this runs on every method symbol: Contains with a comparer boxes the
-    /// ImmutableArray and Any allocates a closure per call. UnityHookMethodAnalysis.FindAttribute is not reused because
-    /// it walks OverriddenMethod: the return-type rules inspect only the attributes applied to the declaration itself,
-    /// so an override that inherits [SetUp] or [Test] from its base method is not reported.
-    /// </summary>
     public bool HasAttribute(IMethodSymbol method)
     {
         return FindAttribute(method) is not null;
     }
 
-    /// <summary>Returns the first matching attribute class in declaration order, or null.</summary>
+    /// <summary>
+    /// Returns the first matching attribute class in declaration order, or null.
+    /// Plain loops rather than LINQ because this runs on every method symbol: Contains with a comparer boxes the
+    /// ImmutableArray and Any allocates a closure per call. UnityHookMethodAnalysis.FindAttribute is not reused because
+    /// it walks OverriddenMethod: the return-type rules inspect only the attributes applied to the declaration itself,
+    /// so an override that inherits [SetUp] or [Test] from its base method is not reported.
+    /// </summary>
     public INamedTypeSymbol? FindAttribute(IMethodSymbol method)
     {
         foreach (var attribute in method.GetAttributes())
