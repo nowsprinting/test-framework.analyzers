@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using UTF.Analyzers.Utilities;
 
 namespace UTF.Analyzers;
 
@@ -33,5 +34,42 @@ public sealed class NonEnumeratorUnitySetUpTearDownAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
+        context.RegisterCompilationStartAction(OnCompilationStart);
+    }
+
+    private static void OnCompilationStart(CompilationStartAnalysisContext context)
+    {
+        // UnityOneTimeSetUp/UnityOneTimeTearDown exist only in Unity Test Framework 1.5.0 or later; TryCreate skips
+        // unresolved names so that UnitySetUp/UnityTearDown are still inspected with earlier versions.
+        var hookAttributes = MethodAttributeAnalysis.TryCreate(context.Compilation, ImmutableArray.Create(
+            "UnityEngine.TestTools.UnitySetUpAttribute", "UnityEngine.TestTools.UnityTearDownAttribute",
+            "UnityEngine.TestTools.UnityOneTimeSetUpAttribute", "UnityEngine.TestTools.UnityOneTimeTearDownAttribute"));
+        var enumerator = context.Compilation.GetTypeByMetadataName("System.Collections.IEnumerator");
+        if (hookAttributes is null || enumerator is null)
+        {
+            return;
+        }
+
+        context.RegisterSymbolAction(symbolContext =>
+        {
+            symbolContext.CancellationToken.ThrowIfCancellationRequested();
+            var method = (IMethodSymbol)symbolContext.Symbol;
+            // Equality rather than assignability: Unity Test Framework collects these methods with
+            // type == method.ReturnType, so an IEnumerator<T> that implements IEnumerator is still dropped.
+            if (SymbolEqualityComparer.Default.Equals(method.ReturnType, enumerator))
+            {
+                return;
+            }
+
+            var attribute = hookAttributes.FindAttribute(method);
+            if (attribute is null)
+            {
+                return;
+            }
+
+            var location = MethodAttributeAnalysis.ReturnTypeLocation(method, symbolContext.CancellationToken);
+            symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, location,
+                method.ReturnType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat), attribute.Name));
+        }, SymbolKind.Method);
     }
 }

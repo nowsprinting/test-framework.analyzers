@@ -8,7 +8,7 @@ namespace UTF.Analyzers.Utilities;
 
 /// <summary>
 /// Recognizes a method marked with one of an explicit set of attributes, for the return-type rules (UTF1002, UTF1006,
-/// UTF1007, UTF1008). TestMethodAnalysis (ITestBuilder-based) is not used because those rules commit to exactly the named
+/// UTF1007, UTF1008, UTF1009). TestMethodAnalysis (ITestBuilder-based) is not used because those rules commit to exactly the named
 /// attributes: UnityTestAttribute also implements ITestBuilder and has its own return-type validation.
 /// </summary>
 internal sealed class MethodAttributeAnalysis
@@ -45,6 +45,12 @@ internal sealed class MethodAttributeAnalysis
     /// </summary>
     public bool HasAttribute(IMethodSymbol method)
     {
+        return FindAttribute(method) is not null;
+    }
+
+    /// <summary>Returns the first matching attribute class in declaration order, or null.</summary>
+    public INamedTypeSymbol? FindAttribute(IMethodSymbol method)
+    {
         foreach (var attribute in method.GetAttributes())
         {
             var attributeClass = attribute.AttributeClass?.OriginalDefinition;
@@ -52,12 +58,12 @@ internal sealed class MethodAttributeAnalysis
             {
                 if (SymbolEqualityComparer.Default.Equals(attributeClass, candidate))
                 {
-                    return true;
+                    return candidate;
                 }
             }
         }
 
-        return false;
+        return null;
     }
 
     /// <summary>
