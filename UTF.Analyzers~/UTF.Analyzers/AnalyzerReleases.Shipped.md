@@ -61,3 +61,17 @@ UTF4002 | Style | Error | UnboundedWaitInSetUpTearDownAnalyzer
 UTF4003 | Style | Error | BusyWaitAnalyzer
 UTF1006 | Structure | Error | NonTaskAsyncTestMethodAnalyzer
 UTF1007 | Structure | Error | NonTaskAsyncSetUpTearDownAnalyzer
+
+## Release 1.4.0
+
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|-------
+UTF1008 | Structure | Error | NonEnumeratorUnityTestMethodAnalyzer
+UTF1009 | Structure | Error | NonEnumeratorUnitySetUpTearDownAnalyzer
+UTF2006 | Assertion | Info | StrippablePropertyLookupAnalyzer
+UTF4004 | Style | Warning | FixedTimeWaitAnalyzer
+UTF4005 | Style | Warning | HiddenTestComponentAnalyzer
+UTF4006 | Style | Warning | PreferAsyncTestMethodAnalyzer
+UTF4007 | Style | Warning | PreferAsyncSetUpTearDownAnalyzer
