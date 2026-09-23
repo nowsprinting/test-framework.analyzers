@@ -41,6 +41,7 @@ Rules about test method signatures and attribute combinations.
 | [UTF1005](Documentation~/rules/UTF1005.md) | Attributes implementing ICommandWrapper are not supported on async and coroutine-style test methods | ❌ |
 | [UTF1006](Documentation~/rules/UTF1006.md) | Only Task is supported as an async test method return type | ❌ |
 | [UTF1007](Documentation~/rules/UTF1007.md) | Only Task is supported as an async SetUp and TearDown method return type | ❌ |
+| [UTF1008](Documentation~/rules/UTF1008.md) | Only IEnumerator is supported as the return type of methods with the UnityTest attribute | ❌ |
 
 ### Assertion (UTF2xxx)
 
