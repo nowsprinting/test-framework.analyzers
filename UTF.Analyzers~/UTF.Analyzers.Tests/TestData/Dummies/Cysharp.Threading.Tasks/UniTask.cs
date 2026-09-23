@@ -16,6 +16,11 @@ namespace Cysharp.Threading.Tasks
             throw new NotImplementedException();
         }
 
+        public static UniTask Yield(CancellationToken cancellationToken, bool cancelImmediately = false)
+        {
+            throw new NotImplementedException();
+        }
+
         public static UniTask NextFrame()
         {
             throw new NotImplementedException();

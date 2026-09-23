@@ -24,6 +24,7 @@ namespace UTF.Analyzers.Tests
         [InlineData("TimeoutOnBaseClass", 21, 13, "while")]
         [InlineData("ClockReadInLoopBody", 16, 13, "while")]
         [InlineData("RecursiveHelper", 14, 26, "Poll")]
+        [InlineData("CancellationLoopWithoutDelay", 17, 13, "while")]
         public async Task UnboundedWaitWithoutTimeout_ReportsAtWait(string fixture, int line, int column, string wait)
         {
             var expected = Verifier.Diagnostic().WithLocation(line, column).WithArguments(wait);
@@ -62,6 +63,8 @@ namespace UTF.Analyzers.Tests
         [InlineData("DeadlineLoop")]
         [InlineData("DeadlineLoopInHelper")]
         [InlineData("AccumulatedDeltaTimeLoop")]
+        [InlineData("CancelAfterWaits")]
+        [InlineData("CancelAfterSlimWaits")]
         public async Task TimeoutPresentOrBoundedWait_NoDiagnostic(string fixture)
         {
             await Verifier.VerifyAsync($"UTF4001/{fixture}.cs");
