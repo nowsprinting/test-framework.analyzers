@@ -42,6 +42,7 @@ Rules about test method signatures and attribute combinations.
 | [UTF1006](Documentation~/rules/UTF1006.md) | Only Task is supported as an async test method return type | ❌ |
 | [UTF1007](Documentation~/rules/UTF1007.md) | Only Task is supported as an async SetUp and TearDown method return type | ❌ |
 | [UTF1008](Documentation~/rules/UTF1008.md) | Only IEnumerator is supported as the return type of methods with the UnityTest attribute | ❌ |
+| [UTF1009](Documentation~/rules/UTF1009.md) | Only IEnumerator is supported as the return type of methods with the UnitySetUp, UnityTearDown, UnityOneTimeSetUp, and UnityOneTimeTearDown attributes | ❌ |
 
 ### Assertion (UTF2xxx)
 
