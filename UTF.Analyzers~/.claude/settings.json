@@ -106,7 +106,6 @@
       "Edit(~/.bashrc)",
       "Read(id_rsa)",
       "Read(id_ed25519)",
-      "Read(*token*)",
       "Edit(packages-lock.json)",
       "Edit(*.meta)",
       "mcp__rider__build_solution",
