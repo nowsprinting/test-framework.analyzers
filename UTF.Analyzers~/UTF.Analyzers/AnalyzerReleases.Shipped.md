@@ -82,3 +82,10 @@ UTF4007 | Style | Warning | PreferAsyncSetUpTearDownAnalyzer
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
+
+## Release 1.4.2
+
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|-------
