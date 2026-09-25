@@ -56,11 +56,11 @@ UTF5004 | Extensions | Warning | Attributes implementing ITestAction must restri
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
+UTF1006 | Structure | Error | NonTaskAsyncTestMethodAnalyzer
+UTF1007 | Structure | Error | NonTaskAsyncSetUpTearDownAnalyzer
 UTF4001 | Style | Error | UnboundedWaitWithoutTimeoutAnalyzer
 UTF4002 | Style | Error | UnboundedWaitInSetUpTearDownAnalyzer
 UTF4003 | Style | Error | BusyWaitAnalyzer
-UTF1006 | Structure | Error | NonTaskAsyncTestMethodAnalyzer
-UTF1007 | Structure | Error | NonTaskAsyncSetUpTearDownAnalyzer
 
 ## Release 1.4.0
 
