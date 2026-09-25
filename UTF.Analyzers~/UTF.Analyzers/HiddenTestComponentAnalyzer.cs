@@ -72,7 +72,7 @@ public sealed class HiddenTestComponentAnalyzer : DiagnosticAnalyzer
             foreach (var reference in symbol.DeclaringSyntaxReferences)
             {
                 var path = reference.SyntaxTree.FilePath;
-                if ((assemblyIsTests || IsUnderTestsDirectory(path))
+                if ((assemblyIsTests || FilePathAnalysis.ContainsDirectory(path, TestsDirectory))
                     && IsResolvedAsComponent(reference, symbol.Name, symbolContext.CancellationToken))
                 {
                     if (IsHidden(symbol, addComponentMenu))
@@ -87,13 +87,6 @@ public sealed class HiddenTestComponentAnalyzer : DiagnosticAnalyzer
                 }
             }
         }, SymbolKind.NamedType);
-    }
-
-    private static bool IsUnderTestsDirectory(string filePath)
-    {
-        // Normalized by hand rather than through Path: the analyzer runs on macOS against paths that Unity on Windows
-        // wrote with backslashes, and Path treats those as part of the file name there.
-        return filePath.Replace('\\', '/').Contains(TestsDirectory);
     }
 
     /// <summary>
