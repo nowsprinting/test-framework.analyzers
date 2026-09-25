@@ -57,6 +57,10 @@ Rules about misuse of assertions and constraints.
 | [UTF2005](Documentation~/rules/UTF2005.md) | DelayedConstraint is not supported | ❌ |
 | [UTF2006](Documentation~/rules/UTF2006.md) | Property constraints, Ordered.By, and List.Map(...).Property lookup properties that managed code stripping can remove | ℹ️ |
 
+> [!TIP]\
+> If your project runs tests on the Player, raise the severity of UTF2006 to warning or higher.
+> The default suggestion severity reports it only in the IDE, and the test fails only on the Player (see [UTF2006](Documentation~/rules/UTF2006.md)).
+
 ### Suppressor (UTF3xxx)
 
 Suppressions of diagnostics reported by other analyzers that do not apply to Unity Test Framework.

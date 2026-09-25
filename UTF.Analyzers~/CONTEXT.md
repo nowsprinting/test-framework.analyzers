@@ -35,9 +35,17 @@ One runnable instance of a test method, built by a test builder attribute.
 The Editor state in which Edit mode tests run, driven by `EditorApplication.update`.
 _Avoid_: Edit Mode, EditMode, editor mode
 
+**Edit mode test**:
+A test that runs in Edit mode, from an assembly that targets only the Editor platform. It never runs on the Player.
+_Avoid_: editor test (the former name), EditMode test
+
 **Play mode**:
-The Editor or Player state in which Play mode tests run, driven by the per-frame game loop.
+The Editor state in which Play mode tests run, driven by the per-frame game loop.
 _Avoid_: Play Mode, PlayMode, runtime mode
+
+**Play mode test**:
+A test that runs in Play mode in the Editor, or on the Player.
+_Avoid_: PlayMode test, runtime test
 
 **Editor**:
 The Unity Editor process. "The Editor freezes" means the main thread is blocked and no frame advances.
@@ -46,6 +54,10 @@ _Avoid_: Unity, IDE
 **Player**:
 A built executable of the project that runs Play mode tests outside the Editor.
 _Avoid_: player build, build, device
+
+**Editor-only test method**:
+A test method that a `[UnityPlatform]` on it, its fixture, or its assembly limits to Editor platforms with `include`, so it is skipped on the Player.
+_Avoid_: editor test (the former name of an Edit mode test)
 
 **Main thread**:
 The thread that runs the game loop, `EditorApplication.update`, coroutines, and every `await` continuation.

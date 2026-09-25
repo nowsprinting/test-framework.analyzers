@@ -22,12 +22,12 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         title:
         "Property constraints, Ordered.By, and List.Map(...).Property look up properties that managed code stripping can remove",
         messageFormat:
-        "'{0}' is looked up by name at runtime and managed code stripping can remove it: the test fails in the Player. Read the property directly in the actual value instead.",
+        "'{0}' is looked up by name at runtime and managed code stripping can remove it: the test fails on the Player. Exclude the test from Player runs with [UnityPlatform] limited to the Editor platforms, or read the property directly in the actual value.",
         category: "Assertion",
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
         description:
-        "Detects every property named by a string (Has.Property, With.Property, Is.Ordered.By, and List.Map(...).Property), and the property shorthands Has.Length, Has.Count, Has.Message, and Has.InnerException whose property is not referenced by NUnit itself. NUnit finds the property with reflection at runtime, so the Unity linker sees no reference to it and can remove it from a Player build.",
+        "Detects every property named by a string (Has.Property, With.Property, Is.Ordered.By, and List.Map(...).Property), and the property shorthands Has.Length, Has.Count, Has.Message, and Has.InnerException whose property is not referenced by NUnit itself. NUnit finds the property with reflection at runtime, so the Unity linker sees no reference to it and can remove it from a Player build. Constraints in a test that never runs on the Player are not reported: a test method, fixture, or assembly that [UnityPlatform] limits to the Editor platforms with include, and a file under an Editor directory.",
         helpLinkUri:
         "https://github.com/nowsprinting/test-framework.analyzers/tree/master/Documentation~/rules/UTF2006.md");
 
@@ -99,6 +99,10 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         ("TargetInvocationException", "System.Reflection.TargetInvocationException"),
     };
 
+    private const string EditorDirectory = "/Editor/";
+
+    private static readonly string[] EditorPlatforms = { "OSXEditor", "WindowsEditor", "LinuxEditor" };
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
     public override void Initialize(AnalysisContext context)
@@ -111,7 +115,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
         var analysis = Analysis.TryCreate(context.Compilation);
-        if (analysis is null)
+        if (analysis is null || analysis.IsEditorOnly(context.Compilation.Assembly))
         {
             return;
         }
@@ -143,6 +147,9 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         private readonly ImmutableDictionary<ISymbol, INamedTypeSymbol> _throwsExceptions;
         private readonly ImmutableHashSet<ISymbol> _conjunctions;
         private readonly Lazy<ImmutableHashSet<ISymbol>> _nunitReferenced;
+        private readonly TestMethodAnalysis? _testMethods;
+        private readonly INamedTypeSymbol? _unityPlatform;
+        private readonly ImmutableArray<object?> _editorPlatforms;
 
         private Analysis(Compilation compilation, INamedTypeSymbol assert, INamedTypeSymbol has,
             INamedTypeSymbol constraintExpression, INamedTypeSymbol constraint, INamedTypeSymbol resolveConstraint)
@@ -189,6 +196,14 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
                     ? entry.Properties.SelectMany(name => type.GetMembers(name).OfType<IPropertySymbol>())
                     : Enumerable.Empty<IPropertySymbol>())
                 .ToImmutableHashSet<ISymbol>(SymbolEqualityComparer.Default));
+            _testMethods = TestMethodAnalysis.TryCreate(compilation);
+            _unityPlatform = compilation.GetTypeByMetadataName("UnityEngine.TestTools.UnityPlatformAttribute");
+            // Compared by constant value rather than by field symbol: a TypedConstant carries only the value.
+            _editorPlatforms = compilation.GetTypeByMetadataName("UnityEngine.RuntimePlatform") is { } runtimePlatform
+                ? EditorPlatforms.SelectMany(name => runtimePlatform.GetMembers(name).OfType<IFieldSymbol>())
+                    .Select(field => field.ConstantValue)
+                    .ToImmutableArray()
+                : ImmutableArray<object?>.Empty;
         }
 
         public static Analysis? TryCreate(Compilation compilation)
@@ -307,8 +322,8 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
             OperationAnalysisContext context)
         {
             var property = FindProperty(target, ConstantName(step));
-            context.ReportDiagnostic(Diagnostic.Create(Rule, OperationAnalysis.MemberNameLocation(step.Syntax),
-                property is null ? NameArgument(step) : $"{property.ContainingType.Name}.{property.Name}"));
+            Report(step, property is null ? NameArgument(step) : $"{property.ContainingType.Name}.{property.Name}",
+                context);
             return property;
         }
 
@@ -364,11 +379,73 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
             var property = FindProperty(target, name);
             if (property is not null && !IsReferencedByNUnit(property))
             {
-                context.ReportDiagnostic(Diagnostic.Create(Rule, OperationAnalysis.MemberNameLocation(step.Syntax),
-                    $"{property.ContainingType.Name}.{property.Name}"));
+                Report(step, $"{property.ContainingType.Name}.{property.Name}", context);
             }
 
             return property;
+        }
+
+        /// <summary>
+        /// Checked here rather than when the invocation is visited: nearly every Assert.That has nothing to report, and
+        /// the check binds attributes and rewrites the file path.
+        /// </summary>
+        private void Report(IOperation step, string property, OperationAnalysisContext context)
+        {
+            if (!NeverRunsOnPlayer(context))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(Rule, OperationAnalysis.MemberNameLocation(step.Syntax),
+                    property));
+            }
+        }
+
+        /// <summary>
+        /// A file under an Editor directory approximates an Edit mode test assembly, whose asmdef the analyzer cannot
+        /// see. A [UnityPlatform] on a fixture skips every member in it, so it covers setup methods and helpers too; on
+        /// a method it takes effect only on a test method, and on the assembly it is checked at compilation start. The
+        /// fixture's containing type is not checked, because NUnit does not apply the attributes of an outer class to a
+        /// nested fixture.
+        /// </summary>
+        private bool NeverRunsOnPlayer(OperationAnalysisContext context)
+        {
+            if (FilePathAnalysis.ContainsDirectory(context.Operation.Syntax.SyntaxTree.FilePath, EditorDirectory))
+            {
+                return true;
+            }
+
+            if (_unityPlatform is null || _editorPlatforms.IsEmpty)
+            {
+                return false;
+            }
+
+            var member = context.ContainingSymbol;
+            return (member.ContainingType is { } type && IsEditorOnly(type)) ||
+                   (member is IMethodSymbol method && IsEditorOnly(method) &&
+                    _testMethods?.IsTestMethod(method) == true);
+        }
+
+        public bool IsEditorOnly(ISymbol symbol) => symbol.GetAttributes().Any(LimitsToEditor);
+
+        /// <summary>
+        /// An exclude list is not accepted: the Player values of RuntimePlatform differ between Unity versions, so a
+        /// list of every Player cannot be verified. An include list names the Editor platforms, which do not change.
+        /// </summary>
+        private bool LimitsToEditor(AttributeData attribute)
+        {
+            if (!SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, _unityPlatform))
+            {
+                return false;
+            }
+
+            // The include property is set after the constructor runs, so a named include overrides the params argument.
+            var include = attribute.NamedArguments
+                .FirstOrDefault(argument => string.Equals(argument.Key, "include", StringComparison.Ordinal)).Value;
+            if (include.Kind != TypedConstantKind.Array)
+            {
+                include = attribute.ConstructorArguments.FirstOrDefault();
+            }
+
+            return include is { Kind: TypedConstantKind.Array, IsNull: false, Values.Length: > 0 } &&
+                   include.Values.All(value => _editorPlatforms.Contains(value.Value));
         }
 
         private IPropertySymbol? FindProperty(ITypeSymbol? target, string? name)
