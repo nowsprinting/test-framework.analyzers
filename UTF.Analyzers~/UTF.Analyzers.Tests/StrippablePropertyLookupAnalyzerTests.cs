@@ -1,4 +1,6 @@
+using System.IO;
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis.Testing;
 using Xunit;
 using Verifier = UTF.Analyzers.Tests.TestDataVerifier<UTF.Analyzers.StrippablePropertyLookupAnalyzer>;
 
@@ -90,6 +92,72 @@ namespace UTF.Analyzers.Tests
         public async Task ShorthandOnKeptOrUnresolvedProperty_NoDiagnostic(string fixture)
         {
             await Verifier.VerifyAsync($"UTF2006/{fixture}.cs");
+        }
+
+        [Theory]
+        [InlineData("EditorOnlyOneEditor")]
+        [InlineData("EditorOnlyAllEditors")]
+        [InlineData("EditorOnlyArrayArgument")]
+        [InlineData("EditorOnlyNamedInclude")]
+        [InlineData("EditorOnlyWithExclude")]
+        [InlineData("EditorOnlyAmongMultiple")]
+        [InlineData("EditorOnlyInLambda")]
+        [InlineData("EditorOnlyInLocalFunction")]
+        [InlineData("EditorOnlyPropertyInVariable")]
+        [InlineData("EditorOnlyFixture")]
+        [InlineData("EditorOnlyAssembly")]
+        public async Task ConstraintInEditorOnlyScope_NoDiagnostic(string fixture)
+        {
+            await Verifier.VerifyAsync($"UTF2006/{fixture}.cs");
+        }
+
+        [Theory]
+        [InlineData("UnityPlatformNoArguments", 15, 52)]
+        [InlineData("UnityPlatformExcludeOnly", 15, 52)]
+        [InlineData("UnityPlatformIncludesPlayer", 15, 52)]
+        [InlineData("UnityPlatformOnSetUp", 15, 52)]
+        [InlineData("UnityPlatformOnOuterClass", 17, 56)]
+        public async Task ConstraintOutsideEditorOnlyScope_Reports(string fixture, int line, int column)
+        {
+            await Verifier.VerifyAsync($"UTF2006/{fixture}.cs",
+                Verifier.Diagnostic().WithLocation(line, column).WithArguments("FileInfo.Length"));
+        }
+
+        [Theory]
+        [InlineData("/Assets/Tests/Editor/HasLengthOnFileInfo.cs")]
+        [InlineData("/Packages/com.example.foo/Editor/HasLengthOnFileInfo.cs")]
+        [InlineData(@"C:\Library\PackageCache\com.example.foo@1.0.0\Tests\Editor\HasLengthOnFileInfo.cs")]
+        public async Task ConstraintUnderEditorDirectory_NoDiagnostic(string path)
+        {
+            await VerifyAtPathAsync("HasLengthOnFileInfo", path);
+        }
+
+        [Theory]
+        [InlineData("/Assets/Tests/Runtime/HasLengthOnFileInfo.cs")]
+        [InlineData("/Assets/EditorTests/HasLengthOnFileInfo.cs")]
+        [InlineData("/Assets/editor/HasLengthOnFileInfo.cs")]
+        public async Task ConstraintOutsideEditorDirectory_Reports(string path)
+        {
+            await VerifyAtPathAsync("HasLengthOnFileInfo", path,
+                Verifier.Diagnostic().WithLocation(path, 13, 52).WithArguments("FileInfo.Length"));
+        }
+
+        /// <summary>
+        /// The harness adds the fixture as "/0/Test0.cs", which is under no Editor directory, so the path cases add it
+        /// under an explicit path instead.
+        /// </summary>
+        private static Task VerifyAtPathAsync(string fixture, string path, params DiagnosticResult[] expected)
+        {
+            var test = new Verifier.Test();
+            test.TestState.Sources.Add((path,
+                File.ReadAllText(Path.Combine(TestDataFiles.Root, "UTF2006", fixture + ".cs"))));
+            foreach (var dummy in TestDataFiles.Dummies)
+            {
+                test.TestState.Sources.Add(dummy);
+            }
+
+            test.ExpectedDiagnostics.AddRange(expected);
+            return test.RunAsync();
         }
     }
 }
