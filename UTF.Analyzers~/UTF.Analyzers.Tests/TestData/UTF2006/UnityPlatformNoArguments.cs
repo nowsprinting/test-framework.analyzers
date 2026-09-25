@@ -1,7 +1,5 @@
-using System;
 using System.IO;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
 
 namespace UTF.Analyzers.Tests.TestData.UTF2006

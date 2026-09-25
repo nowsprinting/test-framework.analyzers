@@ -115,7 +115,7 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
         var analysis = Analysis.TryCreate(context.Compilation);
-        if (analysis is null)
+        if (analysis is null || analysis.IsEditorOnly(context.Compilation.Assembly))
         {
             return;
         }
@@ -150,7 +150,6 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
         private readonly TestMethodAnalysis? _testMethods;
         private readonly INamedTypeSymbol? _unityPlatform;
         private readonly ImmutableArray<object?> _editorPlatforms;
-        private readonly Lazy<bool> _assemblyIsEditorOnly;
 
         private Analysis(Compilation compilation, INamedTypeSymbol assert, INamedTypeSymbol has,
             INamedTypeSymbol constraintExpression, INamedTypeSymbol constraint, INamedTypeSymbol resolveConstraint)
@@ -205,8 +204,6 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
                     .Select(field => field.ConstantValue)
                     .ToImmutableArray()
                 : ImmutableArray<object?>.Empty;
-            // Assembly attributes are bound on the first report, for the same reason as _nunitReferenced.
-            _assemblyIsEditorOnly = new Lazy<bool>(() => IsEditorOnly(compilation.Assembly));
         }
 
         public static Analysis? TryCreate(Compilation compilation)
@@ -403,9 +400,10 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
 
         /// <summary>
         /// A file under an Editor directory approximates an Edit mode test assembly, whose asmdef the analyzer cannot
-        /// see. A [UnityPlatform] on a fixture or an assembly skips every member in it, so it covers setup methods and
-        /// helpers too; on a method it takes effect only on a test method. The fixture's containing type is not checked,
-        /// because NUnit does not apply the attributes of an outer class to a nested fixture.
+        /// see. A [UnityPlatform] on a fixture skips every member in it, so it covers setup methods and helpers too; on
+        /// a method it takes effect only on a test method, and on the assembly it is checked at compilation start. The
+        /// fixture's containing type is not checked, because NUnit does not apply the attributes of an outer class to a
+        /// nested fixture.
         /// </summary>
         private bool NeverRunsOnPlayer(OperationAnalysisContext context)
         {
@@ -420,13 +418,12 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
             }
 
             var member = context.ContainingSymbol;
-            return _assemblyIsEditorOnly.Value ||
-                   (member.ContainingType is { } type && IsEditorOnly(type)) ||
-                   (member is IMethodSymbol method && _testMethods?.IsTestMethod(method) == true &&
-                    IsEditorOnly(method));
+            return (member.ContainingType is { } type && IsEditorOnly(type)) ||
+                   (member is IMethodSymbol method && IsEditorOnly(method) &&
+                    _testMethods?.IsTestMethod(method) == true);
         }
 
-        private bool IsEditorOnly(ISymbol symbol) => symbol.GetAttributes().Any(LimitsToEditor);
+        public bool IsEditorOnly(ISymbol symbol) => symbol.GetAttributes().Any(LimitsToEditor);
 
         /// <summary>
         /// An exclude list is not accepted: the Player values of RuntimePlatform differ between Unity versions, so a
@@ -440,7 +437,8 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
             }
 
             // The include property is set after the constructor runs, so a named include overrides the params argument.
-            var include = attribute.NamedArguments.FirstOrDefault(argument => string.Equals(argument.Key, "include", StringComparison.Ordinal)).Value;
+            var include = attribute.NamedArguments
+                .FirstOrDefault(argument => string.Equals(argument.Key, "include", StringComparison.Ordinal)).Value;
             if (include.Kind != TypedConstantKind.Array)
             {
                 include = attribute.ConstructorArguments.FirstOrDefault();

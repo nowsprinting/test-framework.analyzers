@@ -112,11 +112,11 @@ namespace UTF.Analyzers.Tests
         }
 
         [Theory]
-        [InlineData("UnityPlatformNoArguments", 15, 52)]
-        [InlineData("UnityPlatformExcludeOnly", 15, 52)]
-        [InlineData("UnityPlatformIncludesPlayer", 15, 52)]
-        [InlineData("UnityPlatformOnSetUp", 15, 52)]
-        [InlineData("UnityPlatformOnOuterClass", 17, 56)]
+        [InlineData("UnityPlatformNoArguments", 13, 52)]
+        [InlineData("UnityPlatformExcludeOnly", 14, 52)]
+        [InlineData("UnityPlatformIncludesPlayer", 14, 52)]
+        [InlineData("UnityPlatformOnSetUp", 14, 52)]
+        [InlineData("UnityPlatformOnOuterClass", 16, 56)]
         public async Task ConstraintOutsideEditorOnlyScope_Reports(string fixture, int line, int column)
         {
             await Verifier.VerifyAsync($"UTF2006/{fixture}.cs",
