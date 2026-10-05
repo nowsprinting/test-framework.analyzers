@@ -10,7 +10,7 @@ using UTF.Analyzers.Utilities;
 namespace UTF.Analyzers;
 
 /// <summary>
-/// UTF2006: Property constraints, Ordered.By, and List.Map(...).Property look up properties that managed code stripping can remove.
+/// UTF2006: Property constraints, Ordered.By, and List.Map(...).Property look up properties by reflection that managed code stripping can remove.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
@@ -20,9 +20,9 @@ public sealed class StrippablePropertyLookupAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
         title:
-        "Property constraints, Ordered.By, and List.Map(...).Property look up properties that managed code stripping can remove",
+        "Property constraints, Ordered.By, and List.Map(...).Property look up properties by reflection that managed code stripping can remove",
         messageFormat:
-        "'{0}' is looked up by name at runtime and managed code stripping can remove it: the test fails on the Player. Exclude the test from Player runs with [UnityPlatform] limited to the Editor platforms, or read the property directly in the actual value.",
+        "'{0}' is looked up by reflection and managed code stripping can remove it: the test fails on the Player. Exclude the test from Player runs with [UnityPlatform] limited to the Editor platforms, or read the property directly in the actual value (this conflicts with NUnit2046 for Count or Length of an IEnumerable).",
         category: "Assertion",
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
