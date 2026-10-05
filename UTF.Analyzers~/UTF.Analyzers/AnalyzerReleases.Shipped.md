@@ -89,3 +89,10 @@ Rule ID | Category | Severity | Notes
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
+
+## Release 1.4.3
+
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|-------
