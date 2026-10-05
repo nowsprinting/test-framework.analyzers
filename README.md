@@ -55,7 +55,7 @@ Rules about misuse of assertions and constraints.
 | [UTF2003](Documentation~/rules/UTF2003.md) | Async delegates are not supported as the actual value of the constraint model | ❌ |
 | [UTF2004](Documentation~/rules/UTF2004.md) | Only TestDelegate is supported as the actual value of the AllocatingGCMemory constraint | ❌ |
 | [UTF2005](Documentation~/rules/UTF2005.md) | DelayedConstraint is not supported | ❌ |
-| [UTF2006](Documentation~/rules/UTF2006.md) | Property constraints, Ordered.By, and List.Map(...).Property lookup properties that managed code stripping can remove | ℹ️ |
+| [UTF2006](Documentation~/rules/UTF2006.md) | Property constraints, Ordered.By, and List.Map(...).Property look up properties by reflection that managed code stripping can remove | ℹ️ |
 
 > [!TIP]\
 > If your project runs tests on the Player, raise the severity of UTF2006 to warning or higher.
