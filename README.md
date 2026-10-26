@@ -33,7 +33,7 @@ UTF v1.4.6 is the last version you can update independently as a UPM package.
 Rules about test method signatures and attribute combinations.
 
 | Id | Title | Severity |
-|----|-------|----------|
+|----|-------|:--------:|
 | [UTF1001](Documentation~/rules/UTF1001.md) | TestCase and TestCaseSource attributes are not supported on coroutine-style test methods | ❌ |
 | [UTF1002](Documentation~/rules/UTF1002.md) | Task&lt;TResult&gt; is not supported as a test method return type | ❌ |
 | [UTF1003](Documentation~/rules/UTF1003.md) | Pairwise, Sequential, and Combinatorial attributes are not supported on coroutine-style test methods | ❌ |
@@ -49,7 +49,7 @@ Rules about test method signatures and attribute combinations.
 Rules about misuse of assertions and constraints.
 
 | Id | Title | Severity |
-|----|-------|----------|
+|----|-------|:--------:|
 | [UTF2001](Documentation~/rules/UTF2001.md) | Assert.ThrowsAsync, CatchAsync, and DoesNotThrowAsync are not supported | ❌ |
 | [UTF2002](Documentation~/rules/UTF2002.md) | Async delegates are not supported as the actual value of Throws constraints, Assert.Throws, Assert.Catch, and Assert.DoesNotThrow | ❌ |
 | [UTF2003](Documentation~/rules/UTF2003.md) | Async delegates are not supported as the actual value of the constraint model | ❌ |
@@ -59,7 +59,7 @@ Rules about misuse of assertions and constraints.
 
 > [!TIP]\
 > If your project runs tests on the Player, raise the severity of UTF2006 to warning or higher.
-> The default suggestion severity reports it only in the IDE, and the test fails only on the Player (see [UTF2006](Documentation~/rules/UTF2006.md)).
+> The default suggestion severity reports it only in the IDE, and the test fails only on the Player.
 
 ### Suppressor (UTF3xxx)
 
@@ -79,7 +79,7 @@ Suppressions of diagnostics reported by other analyzers that do not apply to Uni
 Rules about code that works but is not recommended.
 
 | Id | Title | Severity |
-|----|-------|----------|
+|----|-------|:--------:|
 | [UTF4001](Documentation~/rules/UTF4001.md) | Test methods that wait for a condition must have a Timeout attribute | ❌ |
 | [UTF4002](Documentation~/rules/UTF4002.md) | Waits for a condition in UnitySetUp, UnityTearDown, UnityOneTimeSetUp, UnityOneTimeTearDown, SetUp, and TearDown methods must have a time limit | ❌ |
 | [UTF4003](Documentation~/rules/UTF4003.md) | Waiting for a condition without yielding or awaiting does not advance frames | ❌ |
@@ -93,7 +93,7 @@ Rules about code that works but is not recommended.
 Rules for authors of custom attributes, constraints, and comparers.
 
 | Id | Title | Severity |
-|----|-------|----------|
+|----|-------|:--------:|
 | [UTF5001](Documentation~/rules/UTF5001.md) | ApplyToTest, ApplyToContext, and Wrap must not throw exceptions | ❌ |
 | [UTF5002](Documentation~/rules/UTF5002.md) | Implementing IWrapTestMethod and IWrapSetUpTearDown is not recommended | ⚠️ |
 | [UTF5003](Documentation~/rules/UTF5003.md) | Attributes implementing IOuterUnityTestAction must restrict their targets with AttributeUsage | ⚠️ |
